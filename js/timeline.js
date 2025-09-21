@@ -35,21 +35,28 @@ export function initTimeline(containerSelector, detailsHandlers) {
 	function drawTimeline() {
 		const isZoomed = typeof currentScale.focus === 'function';
 
-		// --- 1. TICKS VORBEREITEN (NEUER, ROBUSTER ANSATZ) ---
-		const yearTicks = isZoomed ? currentScale.ticks(d3.timeYear.every(1)) : currentScale.ticks(d3.timeYear.every(5));
-		const monthTicks = isZoomed ? currentScale.ticks(d3.timeMonth.every(1)) : [];
-		const yearTickSet = new Set(yearTicks.map(d => d.getTime()));
+		// --- 1. TICKS VORBEREITEN (NEUE, KLARE LOGIK) ---
+		let majorTicks, minorTicks;
+
+		if (isZoomed) {
+			majorTicks = currentScale.ticks(d3.timeYear.every(1));   // Jahre sind Haupt-Ticks
+			minorTicks = currentScale.ticks(d3.timeMonth.every(1)); // Monate sind Neben-Ticks
+		} else {
+			majorTicks = currentScale.ticks(d3.timeYear.every(5));   // 5-Jahres-Schritte sind Haupt-Ticks
+			minorTicks = currentScale.ticks(d3.timeYear.every(1));   // Jedes Jahr ist ein Neben-Tick
+		}
+		const majorTickSet = new Set(majorTicks.map(d => d.getTime()));
 		
 		// Kombiniere alle Ticks zu einer einzigen, sortierten Liste
-		const allTimestamps = new Set([...yearTicks.map(d => d.getTime()), ...monthTicks.map(d => d.getTime())]);
+		const allTimestamps = new Set([...majorTicks.map(d => d.getTime()), ...minorTicks.map(d => d.getTime())]);
 		const allTicks = Array.from(allTimestamps).map(ts => new Date(ts)).sort((a, b) => a - b);
 
 		// --- 2. ACHSE ERSTELLEN UND ZEICHNEN ---
 		const xAxis = d3.axisBottom(currentScale)
 			.tickValues(allTicks) // Verwende die komplette, kombinierte Tick-Liste
 			.tickFormat(d => {
-				// Zeige nur Labels für Jahres-Ticks an
-				return yearTickSet.has(d.getTime()) ? d3.timeFormat("%Y")(d) : "";
+				// Zeige nur Labels für Haupt-Ticks an
+				return majorTickSet.has(d.getTime()) ? d3.timeFormat("%Y")(d) : "";
 			})
 			.tickSize(height - margin.top - margin.bottom);
 
@@ -72,12 +79,11 @@ export function initTimeline(containerSelector, detailsHandlers) {
 			.select("line")
 			.transition().duration(750)
 			.attr("y1", d => {
-				// Wenn es ein Jahres-Tick ist, lasse die Linie lang.
-				// Wenn es ein Monats-Tick ist, mache sie kürzer.
-				return yearTickSet.has(d.getTime()) ? 0 : height / 2 - 40;
+				// Lange Linie für Haupt-Ticks, kurze für Neben-Ticks
+				return majorTickSet.has(d.getTime()) ? 0 : height / 2 - 40;
 			})
 			.attr("y2", d => {
-				return yearTickSet.has(d.getTime()) ? height - margin.top - margin.bottom : height / 2 + 20;
+				return majorTickSet.has(d.getTime()) ? height - margin.top - margin.bottom : height / 2 + 20;
 			})
 			.attr("stroke", "#555");
 
@@ -87,8 +93,8 @@ export function initTimeline(containerSelector, detailsHandlers) {
 			axisGroup.selectAll(".tick").each(function(d) {
 				const tickElement = d3.select(this);
 				const pixelPos = currentScale(d);
-				const isYear = yearTickSet.has(d.getTime());
-				const minSpacing = isYear ? 60 : 25;
+				const isMajor = majorTickSet.has(d.getTime());
+				const minSpacing = isMajor ? 60 : 25;
 
 				tickElement.attr("opacity", (pixelPos - lastPixelPos >= minSpacing) ? 1 : 0);
 				if (pixelPos - lastPixelPos >= minSpacing) lastPixelPos = pixelPos;
@@ -104,23 +110,38 @@ export function initTimeline(containerSelector, detailsHandlers) {
 			const groupData = breakthroughData
 				.filter(d => d.group === groupName)
 				.sort((a, b) => a.date - b.date);
+			
+			// Berechne für jedes Element eine "Ebene", um Überlappungen zu vermeiden
+			const levelEndPositions = []; // Speichert die End-Position (x + width) für jede Ebene
+			groupData.forEach(d => {
+				// Berechne die Breite, falls sie noch nicht existiert (wichtig für den ersten Durchlauf)
+				if (!d.width) {
+					// Temporäres Text-Element zum Messen erstellen (wird nicht gerendert)
+					const text = svg.append("text").attr("class", "item-group-text-hidden").text(d.content);
+					d.width = text.node().getBBox().width + textPadding;
+					text.remove();
+				}
+				const x = currentScale(d.date);
+				let level = 0;
+				while (levelEndPositions[level] && x - d.width / 2 < levelEndPositions[level] + itemPadding) {
+					level++;
+				}
+				d.level = level; // Speichere die Ebene im Datenobjekt
+				levelEndPositions[level] = x + d.width / 2;
+			});
 
 			const items = selection.selectAll("g.item-group")
 				.data(groupData, d => d.id);
 
 			const itemEnter = items.enter().append("g")
 				.attr("class", "item-group")
+				.attr("transform", d => `translate(${currentScale(d.date)}, ${base_y + (base_y < height / 2 ? -d.level * levelHeight : d.level * levelHeight)})`)
 				.on("click", handleItemClick);
 
-			// Zuerst den Text hinzufügen, um seine Breite zu messen
 			itemEnter.append("text")
 				.attr("y", base_y < height / 2 ? -2.5 : 17.5)
-				.text(d => d.content)
-				.each(function(d) {
-					// Speichere die berechnete Breite im Datenobjekt
-					d.width = this.getBBox().width + textPadding;
-				});
-
+				.text(d => d.content);
+			
 			itemEnter.append("line")
 				.attr("class", "item-link")
 				.attr("y1", base_y < height / 2 ? 25 : -25)
@@ -134,18 +155,6 @@ export function initTimeline(containerSelector, detailsHandlers) {
 				.attr("height", 25)
 				.attr("rx", 5)
 				.style("fill", color);
-
-			// Berechne für jedes Element eine "Ebene", um Überlappungen zu vermeiden
-			const levelEndPositions = []; // Speichert die End-Position (x + width) für jede Ebene
-			groupData.forEach(d => {
-				const x = currentScale(d.date);
-				let level = 0;
-				while (levelEndPositions[level] && x - d.width / 2 < levelEndPositions[level] + itemPadding) {
-					level++;
-				}
-				d.level = level; // Speichere die Ebene im Datenobjekt
-				levelEndPositions[level] = x + d.width / 2;
-			});
 
 			items.merge(itemEnter)
 				.transition().duration(750)
