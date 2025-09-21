@@ -1,7 +1,7 @@
 // js/fisheye.js
 // Überarbeitete, robuste Fisheye-Implementierung
 export function createFisheyeScale(baseScale) {
-    let distortion = 20; // Erhöht für eine stärkere Verzerrung im Zentrum
+    let distortion = 15; // Leicht reduziert für eine sanftere Verzerrung
     let focusPoint = 0;
 
     function fisheye(scale) {
@@ -27,7 +27,6 @@ export function createFisheyeScale(baseScale) {
         rescale.tickFormat = scale.tickFormat;
         rescale.copy = () => fisheye(scale.copy());
         rescale.focus = function(p) {
-            if (!arguments.length) return focusPoint;
             focusPoint = p;
             return rescale;
         };

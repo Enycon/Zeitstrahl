@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 3. Erstelle die Steuerelemente dynamisch
         setupControls(groupInfo, redraw);
+
+        // 4. Update die Datalist für das Formular
+        updateCategoryDatalist(allKnownGroups);
     }
 
     // --- DETAILS-FENSTER LOGIK ---
@@ -169,6 +172,55 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // --- EREIGNIS HINZUFÜGEN MODAL ---
+    const addEventModal = document.getElementById('add-event-modal');
+    const addEventBtn = document.getElementById('add-event-btn');
+    const addEventCloseBtn = addEventModal.querySelector('.modal-close-btn');
+    const addEventForm = document.getElementById('add-event-form');
+    const categoryDatalist = document.getElementById('category-list');
+
+    function updateCategoryDatalist(groups) {
+        categoryDatalist.innerHTML = '';
+        groups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group;
+            categoryDatalist.appendChild(option);
+        });
+    }
+
+    addEventBtn.addEventListener('click', () => addEventModal.classList.remove('is-hidden'));
+    addEventCloseBtn.addEventListener('click', () => addEventModal.classList.add('is-hidden'));
+    addEventModal.addEventListener('click', (e) => {
+        if (e.target === addEventModal) {
+            addEventModal.classList.add('is-hidden');
+        }
+    });
+
+    addEventForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const formData = new FormData(addEventForm);
+        const newCategory = formData.get('group').toLowerCase().trim();
+
+        const newEvent = {
+            id: Date.now(), // Einfache, einzigartige ID
+            content: formData.get('content'),
+            start: formData.get('date'),
+            group: newCategory,
+            details: "Noch keine Details vorhanden.", // Platzhalter
+        };
+        newEvent.date = new Date(newEvent.start);
+
+        // Füge das neue Event zu den Daten hinzu
+        appData.push(newEvent);
+        // Stelle sicher, dass die neue Kategorie bekannt ist
+        if (!allKnownGroups.includes(newCategory)) {
+            allKnownGroups.push(newCategory);
+        }
+
+        renderApp(appData);
+        addEventModal.classList.add('is-hidden');
+        addEventForm.reset();
+    });
 
     // --- ERSTER APP-START ---
     renderApp(appData);

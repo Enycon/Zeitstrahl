@@ -15,7 +15,10 @@
     <header id="app-header">
         <!-- Steuerung zum Ein- und Ausblenden der Zeitstrahlen -->
         <div id="timeline-controls"></div>
-        <button id="manage-btn" title="Kategorien verwalten">⚙️</button>
+        <div id="header-actions">
+            <button id="add-event-btn" title="Neues Ereignis hinzufügen">+</button>
+            <button id="manage-btn" title="Kategorien verwalten">⚙️</button>
+        </div>
     </header>
     <main id="main-content">
         <!-- Wrapper für die Zeitleiste und die Detailansicht -->
@@ -29,6 +32,30 @@
             </aside>
         </div>
     </main>
+
+    <!-- Modal zum Hinzufügen neuer Ereignisse -->
+    <div id="add-event-modal" class="modal-overlay is-hidden">
+        <div class="modal-content">
+            <button class="modal-close-btn" title="Schließen">&times;</button>
+            <h2>Neues Ereignis</h2>
+            <form id="add-event-form">
+                <div class="form-group">
+                    <label for="event-content">Titel</label>
+                    <input type="text" id="event-content" name="content" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-date">Datum</label>
+                    <input type="date" id="event-date" name="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="event-group">Kategorie</label>
+                    <input type="text" id="event-group" name="group" list="category-list" placeholder="Bestehende wählen oder neue erstellen" required>
+                    <datalist id="category-list"></datalist>
+                </div>
+                <button type="submit" class="form-submit-btn">Ereignis erstellen</button>
+            </form>
+        </div>
+    </div>
 
     <!-- Modal zum Verwalten der Kategorien -->
     <div id="manage-categories-modal" class="modal-overlay is-hidden">

@@ -304,33 +304,28 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		const categorySortedData = sortedData.filter(item => item.group === category);
 		const currentIndexInCategory = categorySortedData.findIndex(item => item.id === d.id);
 
-		const prevItem = currentIndexInCategory > 0 ? categorySortedData[currentIndexInCategory - 1] : null;
-		const nextItem = currentIndexInCategory < categorySortedData.length - 1 ? categorySortedData[currentIndexInCategory + 1] : null;
+		// --- NEUE ZOOM-LOGIK: Zeige immer ca. 5 Events an ---
+		const itemsToShow = 5;
+		const half = Math.floor(itemsToShow / 2);
 
-		// Bestimme die äußeren Grenzen für den Zoom (idealerweise die übernächsten Nachbarn)
-		let neighborStartDate, neighborEndDate;
+		let startIndex = Math.max(0, currentIndexInCategory - half);
+		let endIndex = Math.min(categorySortedData.length - 1, currentIndexInCategory + half);
 
-		// Start-Datum bestimmen (übernächster, dann direkter Nachbar, dann Timeline-Anfang)
-		if (currentIndexInCategory > 1) {
-			neighborStartDate = categorySortedData[currentIndexInCategory - 2].date;
-		} else if (prevItem) {
-			neighborStartDate = prevItem.date;
-		} else {
-			neighborStartDate = originalDomain[0];
+		// Wenn wir am Anfang oder Ende sind, erweitere den Bereich auf der anderen Seite,
+		// um möglichst auf 5 Events zu kommen.
+		if (endIndex - startIndex + 1 < itemsToShow) {
+			if (startIndex === 0) {
+				endIndex = Math.min(categorySortedData.length - 1, itemsToShow - 1);
+			} else if (endIndex === categorySortedData.length - 1) {
+				startIndex = Math.max(0, categorySortedData.length - itemsToShow);
+			}
 		}
 
-		// End-Datum bestimmen (übernächster, dann direkter Nachbar, dann Timeline-Ende)
-		if (currentIndexInCategory < categorySortedData.length - 2) {
-			neighborEndDate = categorySortedData[currentIndexInCategory + 2].date;
-		} else if (nextItem) {
-			neighborEndDate = nextItem.date;
-		} else {
-			neighborEndDate = originalDomain[1];
-		}
+		const firstEventDate = categorySortedData[startIndex].date;
+		const lastEventDate = categorySortedData[endIndex].date;
 
-		// Berechne die gesamte Zeitspanne, die wir anzeigen wollen.
-		const timeSpan = neighborEndDate.getTime() - neighborStartDate.getTime();
-		const padding = timeSpan > 0 ? timeSpan * 0.25 : 1000 * 60 * 60 * 24 * 365 * 10; // 10 Jahre Puffer, falls kein Abstand
+		const timeSpan = lastEventDate.getTime() - firstEventDate.getTime();
+		const padding = timeSpan > 0 ? timeSpan * 0.15 : 1000 * 60 * 60 * 24 * 365 * 5; // 5 Jahre Puffer als Fallback
 		const totalSpanWithPadding = timeSpan + padding * 2;
 
 		// Erstelle die neue Domain, die EXAKT um das geklickte Datum zentriert ist.

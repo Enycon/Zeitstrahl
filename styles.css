@@ -35,7 +35,7 @@ body {
 
 /* Stile für den neuen App-Header */
 #app-header {
-    position: relative; /* Wichtig für die Positionierung des Buttons */
+    position: relative; /* Wichtig für die absolute Positionierung der Actions */
     display: flex;
     align-items: center;
     padding: 0.8em 2em;
@@ -55,22 +55,20 @@ body {
     gap: 2em;
 }
 
-/* Stile für die Timeline-Steuerung (Checkboxes) */
-#timeline-controls {
-    display: flex;
-    justify-content: center;
-    gap: 2em;
-}
-
-#manage-btn {
+#header-actions {
     position: absolute; /* Löst den Button aus dem Flex-Fluss */
     right: 2em;
     top: 50%;
     transform: translateY(-50%);
+    display: flex;
+    gap: 0.5em;
+}
+
+#manage-btn,
+#add-event-btn {
     background: none;
     border: 2px solid var(--border-color);
     color: var(--text-color);
-    font-size: 1.2em;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -81,7 +79,12 @@ body {
     justify-content: center;
 }
 
-#manage-btn:hover {
+#add-event-btn {
+    font-size: 1.5em;
+}
+
+#manage-btn:hover,
+#add-event-btn:hover {
     border-color: #fff;
     color: #fff;
 }
