@@ -61,6 +61,8 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 	let linearBaseScale = timeScale; // Hält die aktuelle lineare Skala (ohne Fisheye)
 	let currentScale = timeScale; // Die aktuell verwendete Skala (kann linear oder fisheye sein)
 	let focusedItemId = null;
+    
+	const keyFunc = d => d.date.toISOString() + d.content; // Eindeutiger Schlüssel ohne ID
 
 	// --- DYNAMISCHE GRUPPEN-VERWALTUNG ---
 	// Eine Farbskala erstellen, die jeder Gruppe automatisch eine Farbe zuweist
@@ -78,7 +80,23 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		});
 	});
 
-	function drawTimeline() {
+	function drawTimeline(activeLaneNames = []) {
+		// --- NEU: Dynamische Zuweisung basierend auf der Klick-Reihenfolge ---
+		// Setze für alle Gruppen die Positionen zurück
+		groupInfo.forEach(info => {
+			info.isCurrentlyUp = false;
+			info.isCurrentlyDown = false;
+		});
+
+		// Weise die Positionen basierend auf der Reihenfolge im `activeLaneNames` Array zu.
+		if (activeLaneNames.length > 0) {
+			const topLaneInfo = groupInfo.get(activeLaneNames[0]);
+			if (topLaneInfo) topLaneInfo.isCurrentlyUp = true;
+		}
+		if (activeLaneNames.length > 1) {
+			const bottomLaneInfo = groupInfo.get(activeLaneNames[1]);
+			if (bottomLaneInfo) bottomLaneInfo.isCurrentlyDown = true;
+		};
 		// --- NEUE, ROBUSTE HÖHENBERECHNUNG ---
 		const laneOffset = 50; // Grundabstand von der Mittellinie
 		const laneHeight = 80; // Abstand zwischen den Zeitstrahl-Spuren
@@ -90,10 +108,11 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 
 		// 1. Berechne für alle sichtbaren Gruppen die maximale Stapelhöhe
 		groupInfo.forEach((info, name) => {
-			if (info.boxGroup.style("display") !== "none") {
+			// Berücksichtige nur die Spuren, die jetzt aktiv sind
+			if (info.isCurrentlyUp || info.isCurrentlyDown) {
 				const groupData = data.filter(d => d.group === name);
 				const { maxLevel } = calculateLayout(groupData, currentScale);
-				if (info.isUp) {
+				if (info.isCurrentlyUp) {
 					maxLevelUp = Math.max(maxLevelUp, maxLevel);
 				} else {
 					maxLevelDown = Math.max(maxLevelDown, maxLevel);
@@ -111,14 +130,16 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		let upIndex = 0;
 		let downIndex = 0;
 		groupInfo.forEach(info => {
-			if (info.isUp) {
-				// Setze die Y-Position der Lane sofort, ohne Transition.
-				// Die Animation wird von den Items selbst übernommen.
-				info.y = heightUp - (laneOffset + upIndex * laneHeight);
-				upIndex++;
-			} else {
-				info.y = heightUp + (laneOffset + downIndex * laneHeight); // Sofort setzen
-				downIndex++;
+			// WICHTIG: Die Y-Position wird nur für sichtbare Lanes neu berechnet und der Index erhöht.
+			// So wird sichergestellt, dass die Spuren korrekt auf die verfügbaren Slots verteilt werden.
+			if (info.isCurrentlyUp || info.isCurrentlyDown) {
+				if (info.isCurrentlyUp) {
+					info.y = heightUp - (laneOffset + upIndex * laneHeight);
+					upIndex++;
+				} else {
+					info.y = heightUp + (laneOffset + downIndex * laneHeight);
+					downIndex++;
+				}
 			}
 		});
 		// --- ENDE HÖHENBERECHNUNG ---
@@ -230,62 +251,81 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 
 		function drawItems(info, groupName, base_y, color) {
 			const levelHeight = 40; // Vertikaler Abstand für jede Ausweich-Ebene
+			const isVisible = info.isCurrentlyUp || info.isCurrentlyDown;
 
-			const groupData = data
+			// Wenn die Gruppe nicht sichtbar ist, ist ihr Datensatz leer.
+			// Das löst die .exit() Animation für alle ihre Elemente aus.
+			const groupData = isVisible ? [...data
 				.filter(d => d.group === groupName)
-				.sort((a, b) => a.date - b.date);
+				.sort((a, b) => a.date - b.date)] : [];
 
 			// --- 1. Linien zeichnen (in der unteren Ebene) ---
 			const lines = info.lineGroup.selectAll("line.item-link")
-				.data(groupData, d => d.id);
+				.data(groupData, keyFunc);
 
+			// ENTER (für neue Elemente)
 			const linesEnter = lines.enter().append("line")
 				.attr("class", "item-link")
 				.attr("x1", d => currentScale(d.date))
-				.attr("x2", d => currentScale(d.date))
-				.attr("y1", heightUp) // Start an der Mittelachse
-				.attr("y2", d => base_y + (info.isUp ? -d.level * levelHeight + 5 : d.level * levelHeight)); // Ende am Rand der Box
+				.attr("x2", d => currentScale(d.date)) // Start- und End-X sind gleich
+				.attr("y1", height + 100) // Startet weit unter dem sichtbaren Bereich
+				.attr("y2", height + 100);
 
+			// MERGE (für neue und bestehende Elemente)
 			lines.merge(linesEnter).transition().duration(animationDuration)
 				.attr("x1", d => currentScale(d.date))
 				.attr("x2", d => currentScale(d.date))
-				.attr("y1", heightUp)
-				.attr("y2", d => base_y + (info.isUp ? -d.level * levelHeight + 5 : d.level * levelHeight));
+				.attr("y1", heightUp) // Start an der Mittelachse
+				.attr("y2", d => base_y + (info.isCurrentlyUp ? -d.level * levelHeight : d.level * levelHeight));
 
-			lines.exit().remove();
+			// EXIT (für entfernte Elemente)
+			lines.exit().transition().duration(animationDuration)
+				.attr("y1", -100) // Fliegt nach oben raus
+				.attr("y2", -100)
+				.remove();
 
 			// --- 2. Boxen zeichnen (in der oberen Ebene) ---
 			const boxes = info.boxGroup.selectAll("g.item-box-group")
-				.data(groupData, d => d.id);
+				.data(groupData, keyFunc);
 
+			// ENTER
 			const boxesEnter = boxes.enter().append("g")
 				.attr("class", "item-box-group")
-				.attr("transform", d => `translate(${currentScale(d.date)}, ${base_y + (info.isUp ? -d.level * levelHeight : d.level * levelHeight)})`)
+				.attr("transform", d => `translate(${currentScale(d.date)}, ${height + 100})`) // Startet weit unten
 				.on("click", handleItemClick);
 
 			boxesEnter.insert("rect", "text")
 				.attr("x", d => -d.width / 2)
-				.attr("y", info.isUp ? -20 : 0)
+				.attr("y", info.isUp ? -20 : 0) // Benutze die originale isUp für die Box-Position
 				.attr("width", d => d.width)
 				.attr("height", 25)
 				.attr("rx", 5)
 				.style("fill", color);
 			
 			boxesEnter.append("text")
-				.attr("y", info.isUp ? -2.5 : 17.5)
+				.attr("y", info.isUp ? -2.5 : 17.5) // Benutze die originale isUp für die Text-Position
 				.text(d => d.content);
 
+			// MERGE
 			boxes.merge(boxesEnter).transition().duration(animationDuration)
-				.attr("transform", d => `translate(${currentScale(d.date)}, ${base_y + (info.isUp ? -d.level * levelHeight : d.level * levelHeight)})`);
+				.attr("transform", d => `translate(${currentScale(d.date)}, ${base_y + (info.isCurrentlyUp ? -d.level * levelHeight : d.level * levelHeight)})`);
 
-			boxes.exit().remove();
+			// EXIT
+			boxes.exit().transition().duration(animationDuration)
+				.attr("transform", function(d) {
+					const currentTransform = d3.select(this).attr("transform");
+					const x = currentTransform.match(/translate\(([^,]+),/)[1];
+					return `translate(${x}, -100)`; // Behalte X-Position, fliege nach oben raus
+				})
+				.remove();
 		}
 
 		// Rufe drawItems für jede dynamisch gefundene Gruppe auf
 		groupInfo.forEach((info, name) => {
-			if (info.boxGroup.style("display") !== "none") {
-				drawItems(info, name, info.y, info.color);
-			}
+			// WICHTIG: Rufe die Zeichenfunktion nur für die Spuren auf, die jetzt aktiv sind.
+			// Die Exit-Animation wird innerhalb von drawItems für die nicht mehr aktiven Spuren gehandhabt.
+			calculateLayout(data.filter(d => d.group === name), currentScale); // Layout für alle berechnen
+			drawItems(info, name, info.y, info.color); // Zeichnen mit der berechneten Y-Position
 		});
 	}
 
@@ -293,7 +333,7 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		event.stopPropagation();
 
 		// Wenn auf das bereits fokussierte Element geklickt wird, schließe die Details.
-		if (focusedItemId === d.id) { // Und setze den Zoom zurück
+		if (focusedItemId === keyFunc(d)) { // Und setze den Zoom zurück
 			resetFocusAndDetails();
 			return;
 		}
@@ -302,7 +342,7 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		// Filtere die Daten, um nur die Nachbarn der gleichen Kategorie zu berücksichtigen
 		const category = d.group;
 		const categorySortedData = sortedData.filter(item => item.group === category);
-		const currentIndexInCategory = categorySortedData.findIndex(item => item.id === d.id);
+		const currentIndexInCategory = categorySortedData.findIndex(item => keyFunc(item) === keyFunc(d));
 
 		// --- NEUE ZOOM-LOGIK: Zeige immer ca. 5 Events an ---
 		const itemsToShow = 5;
@@ -355,7 +395,7 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		d3.selectAll(".item-box-group rect").style("filter", null); // Reset aller Filter
 		d3.select(event.currentTarget).classed("is-focused", true);
 		d3.select(event.currentTarget).select("rect").style("filter", `drop-shadow(0 0 6px ${info.color})`);
-		focusedItemId = d.id;
+		focusedItemId = keyFunc(d);
 	}
 
 	function resetFocusAndDetails() {
@@ -375,9 +415,12 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 
 	svg.on('click', resetFocusAndDetails);
 
-	// Initialisierung
-	drawTimeline();
-
-	// Exponiere die Gruppen-Informationen, damit sie von außen gesteuert werden können
-	return { groupInfo, redraw: drawTimeline };
+	// Exponiere die Gruppen-Informationen und die redraw-Funktion
+	return { 
+		groupInfo, 
+		redraw: (activeLanes) => {
+			// Stelle sicher, dass die Timeline mit den korrekten aktiven Spuren gezeichnet wird.
+			drawTimeline(activeLanes);
+		}
+	};
 }

@@ -1,11 +1,14 @@
 // js/main.js
-import { breakthroughData } from './data.js';
+import { loadEvents } from './data-loader.js';
 import { initTimeline } from './timeline.js';
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // --- GLOBALER APP-ZUSTAND ---
-    let appData = [...breakthroughData];
-    let allKnownGroups = [...new Set(appData.map(d => d.group))];
+    // Lade die Daten asynchron, bevor die App initialisiert wird.
+    const rawData = await loadEvents();
+    // Konvertiere Datum-Strings in Date-Objekte für die D3-Timeline
+    const appData = rawData.map(d => ({ ...d, date: new Date(d.start) }));
+    const allKnownGroups = [...new Set(appData.map(d => d.group))];
     const timelineContainer = document.getElementById('d3-timeline-container');
     const controlsContainer = document.getElementById('timeline-controls');
 
@@ -17,12 +20,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 2. Initialisiere die Timeline mit den aktuellen Daten
         const { groupInfo, redraw } = initTimeline('#d3-timeline-container', data, allKnownGroups, createDetailsHandlers());
-
+        
         // 3. Erstelle die Steuerelemente dynamisch
-        setupControls(groupInfo, redraw);
-
-        // 4. Update die Datalist für das Formular
-        updateCategoryDatalist(allKnownGroups);
+        const initialActiveLanes = setupControls(groupInfo, redraw);
+        
+        // 4. Führe den ersten Render-Vorgang mit dem initialen Zustand aus.
+        redraw(initialActiveLanes);
+        
+        // 5. Initialisiere die Logik für das Workflow-Modal
+        initWorkflowModal();
     }
 
     // --- DETAILS-FENSTER LOGIK ---
@@ -33,11 +39,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const detailsDate = document.getElementById('details-date');
         const detailsText = document.getElementById('details-text');
 
+        // Wandelt einfachen Markdown-Text in HTML um
+        function simpleMarkdownToHtml(md) {
+            let html = md
+                // ### Überschriften
+                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+                // *kursiv* oder _kursiv_
+                .replace(/[\*_]([^\*_]+)[\*_]/g, '<em>$1</em>')
+                .replace(/^\* (.*$)/gim, '<li>$1</li>'); // Listenpunkte
+
+            return html
+                // Absätze
+                .replace(/\n\n/g, '</p><p>')
+                // Einzelne Zeilenumbrüche
+                .replace(/\n/g, '<br>')
+                // Korrigiere Absätze, die durch die Ersetzungen entstehen könnten
+                .replace(/<br><\/p>/g, '</p>')
+                .replace(/<p><br>/g, '<p>');
+        }
+
         return {
             show: (d) => {
                 detailsTitle.innerText = d.content;
                 detailsDate.innerText = d.date.toLocaleDateString('de-DE', { year: 'numeric', month: 'long', day: 'numeric' });
-                detailsText.innerText = d.details;
+                detailsText.innerHTML = `<p>${simpleMarkdownToHtml(d.details)}</p>`;
                 detailsPane.classList.add('visible');
                 timelinesWrapper.classList.add('details-visible');
             },
@@ -81,147 +106,129 @@ document.addEventListener('DOMContentLoaded', function() {
                 activeLanes.push(name);
             } else {
                 checkbox.checked = false;
-                info.boxGroup.style("display", "none");
-                info.lineGroup.style("display", "none");
             }
 
             checkbox.addEventListener('change', () => {
                 if (checkbox.checked) {
                     activeLanes.push(name);
-                    info.boxGroup.style("display", "inline");
-                    info.lineGroup.style("display", "inline");
                     if (activeLanes.length > 2) {
-                        const laneToDeactivate = activeLanes.shift();
-                        allCheckboxes.get(laneToDeactivate).checked = false;
-                        const groupToDeactivate = groupInfo.get(laneToDeactivate);
-                        groupToDeactivate.boxGroup.style("display", "none");
-                        groupToDeactivate.lineGroup.style("display", "none");
+                        // Deaktiviere die älteste Spur, aber überlasse das Ausblenden der Timeline-Animation
+                        const laneNameToDeactivate = activeLanes.shift();
+                        allCheckboxes.get(laneNameToDeactivate).checked = false;
                     }
                 } else {
+                    // Entferne die Spur aus der aktiven Liste
                     activeLanes.splice(activeLanes.indexOf(name), 1);
-                    info.boxGroup.style("display", "none");
-                    info.lineGroup.style("display", "none");
                 }
-
+                
                 // Zeichne die Timeline neu, um die Höhe anzupassen
-                redraw();
+                redraw(activeLanes);
             });
         });
+
+        return activeLanes;
     }
 
-    // --- KATEGORIE-MANAGEMENT-MODAL ---
-    const manageModal = document.getElementById('manage-categories-modal');
-    const manageBtn = document.getElementById('manage-btn');
-    const closeBtn = manageModal.querySelector('.modal-close-btn');
-    const categoryListContainer = document.getElementById('category-list-container');
-    const addCategoryForm = document.getElementById('add-category-form');
-
-    function populateCategoryManager() {
-        categoryListContainer.innerHTML = '';
-        allKnownGroups.forEach(group => {
-            const item = document.createElement('div');
-            item.className = 'category-list-item';
-            item.innerHTML = `<span>${group}</span>`;
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'category-delete-btn';
-            deleteBtn.textContent = 'Löschen';
-            deleteBtn.onclick = () => handleDeleteCategory(group);
-
-            item.appendChild(deleteBtn);
-            categoryListContainer.appendChild(item);
-        });
-    }
-
-    function handleDeleteCategory(groupToDelete) {
-        if (confirm(`Möchtest du die Kategorie "${groupToDelete}" und alle zugehörigen Ereignisse wirklich löschen?`)) {
-            // Filtere die Daten und die bekannten Gruppen
-            appData = appData.filter(event => event.group !== groupToDelete);
-            allKnownGroups = allKnownGroups.filter(g => g !== groupToDelete);
+    // --- WORKFLOW MODAL LOGIK ---
+    function initWorkflowModal() {
+        // DOM-Elemente
+        const modal = document.getElementById('workflow-modal');
+        const openBtn = document.getElementById('show-workflow-btn');
+        const closeBtn = document.getElementById('close-workflow-btn');
+        const copyButton = document.getElementById('copy-workflow-btn');
+        const backButton = document.querySelector('.workflow-back-btn');
+    
+        const selectionView = document.getElementById('workflow-selection');
+        const displayView = document.getElementById('workflow-display');
+        const workflowListContainer = document.getElementById('workflow-list');
+        const workflowTitleEl = document.getElementById('workflow-title');
+        const workflowContentEl = document.getElementById('workflow-content');
+    
+        let textToCopy = '';
+    
+        // Liste der verfügbaren Workflows
+        const availableWorkflows = [
+            { 
+                id: 'generate_event', 
+                title: 'Neues Ereignis generieren', 
+                description: 'Erstellt ein neues Ereignis für die Timeline basierend auf einer Recherche.',
+                file: 'workflows/generate_event.md' 
+            }
+            // Hier können zukünftige Workflows hinzugefügt werden
+        ];
+    
+        // Funktion zum Anzeigen der Workflow-Auswahl
+        function showSelectionView() {
+            selectionView.style.display = 'block';
+            displayView.style.display = 'none';
             
-            // Zeichne die App neu und aktualisiere das Management-Fenster
-            renderApp(appData);
-            populateCategoryManager();
+            workflowListContainer.innerHTML = ''; // Leeren für den Fall, dass es neu gerendert wird
+    
+            availableWorkflows.forEach(wf => {
+                const button = document.createElement('button');
+                button.className = 'workflow-select-btn';
+                button.innerHTML = `<strong>${wf.title}</strong><p>${wf.description}</p>`;
+                button.addEventListener('click', () => showDisplayView(wf));
+                workflowListContainer.appendChild(button);
+            });
         }
-    }
-
-    manageBtn.addEventListener('click', () => {
-        populateCategoryManager();
-        manageModal.classList.remove('is-hidden');
-    });
-
-    closeBtn.addEventListener('click', () => manageModal.classList.add('is-hidden'));
-    manageModal.addEventListener('click', (e) => {
-        if (e.target === manageModal) {
-            manageModal.classList.add('is-hidden');
+    
+        // Funktion zum Anzeigen des ausgewählten Prompts
+        async function showDisplayView(workflow) {
+            selectionView.style.display = 'none';
+            displayView.style.display = 'block';
+    
+            workflowTitleEl.textContent = workflow.title;
+            workflowContentEl.textContent = 'Wird geladen...';
+            textToCopy = '';
+    
+            try {
+                const response = await fetch(workflow.file);
+                if (!response.ok) throw new Error(`HTTP-Fehler! Status: ${response.status}`);
+                
+                const fullText = await response.text();
+                // Extrahiere nur den Prompt-Teil
+                const promptMarker = '---';
+                const promptStartIndex = fullText.indexOf(promptMarker);
+                textToCopy = (promptStartIndex !== -1) 
+                    ? fullText.substring(promptStartIndex + promptMarker.length).trim() 
+                    : fullText;
+    
+                workflowContentEl.textContent = textToCopy;
+            } catch (error) {
+                workflowContentEl.textContent = 'Fehler beim Laden des Workflows.';
+                console.error(`Fehler beim Abrufen der Datei ${workflow.file}:`, error);
+            }
         }
-    });
-
-    addCategoryForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const newCategoryName = new FormData(addCategoryForm).get('newCategoryName').toLowerCase().trim();
-
-        if (newCategoryName && !allKnownGroups.includes(newCategoryName)) {
-            allKnownGroups.push(newCategoryName);
-            // Zeichne die App neu und aktualisiere das Management-Fenster
-            renderApp(appData);
-            populateCategoryManager();
-            addCategoryForm.reset();
-        } else {
-            alert("Dieser Kategoriename existiert bereits oder ist ungültig.");
-        }
-    });
-
-    // --- EREIGNIS HINZUFÜGEN MODAL ---
-    const addEventModal = document.getElementById('add-event-modal');
-    const addEventBtn = document.getElementById('add-event-btn');
-    const addEventCloseBtn = addEventModal.querySelector('.modal-close-btn');
-    const addEventForm = document.getElementById('add-event-form');
-    const categoryDatalist = document.getElementById('category-list');
-
-    function updateCategoryDatalist(groups) {
-        categoryDatalist.innerHTML = '';
-        groups.forEach(group => {
-            const option = document.createElement('option');
-            option.value = group;
-            categoryDatalist.appendChild(option);
+    
+        // Event-Listener
+        openBtn.addEventListener('click', () => {
+            modal.classList.add('visible');
+            showSelectionView(); // Starte immer mit der Auswahlansicht
+        });
+    
+        closeBtn.addEventListener('click', () => {
+            modal.classList.remove('visible');
+        });
+    
+        backButton.addEventListener('click', showSelectionView);
+    
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) { // Schließt nur bei Klick auf den Hintergrund
+                modal.classList.remove('visible');
+            }
+        });
+    
+        copyButton.addEventListener('click', () => {
+            if (textToCopy) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const originalText = copyButton.textContent;
+                    copyButton.textContent = 'Kopiert!';
+                    setTimeout(() => { copyButton.textContent = originalText; }, 2000);
+                });
+            }
         });
     }
-
-    addEventBtn.addEventListener('click', () => addEventModal.classList.remove('is-hidden'));
-    addEventCloseBtn.addEventListener('click', () => addEventModal.classList.add('is-hidden'));
-    addEventModal.addEventListener('click', (e) => {
-        if (e.target === addEventModal) {
-            addEventModal.classList.add('is-hidden');
-        }
-    });
-
-    addEventForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const formData = new FormData(addEventForm);
-        const newCategory = formData.get('group').toLowerCase().trim();
-
-        const newEvent = {
-            id: Date.now(), // Einfache, einzigartige ID
-            content: formData.get('content'),
-            start: formData.get('date'),
-            group: newCategory,
-            details: "Noch keine Details vorhanden.", // Platzhalter
-        };
-        newEvent.date = new Date(newEvent.start);
-
-        // Füge das neue Event zu den Daten hinzu
-        appData.push(newEvent);
-        // Stelle sicher, dass die neue Kategorie bekannt ist
-        if (!allKnownGroups.includes(newCategory)) {
-            allKnownGroups.push(newCategory);
-        }
-
-        renderApp(appData);
-        addEventModal.classList.add('is-hidden');
-        addEventForm.reset();
-    });
-
     // --- ERSTER APP-START ---
     renderApp(appData);
 });

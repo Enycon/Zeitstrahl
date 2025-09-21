@@ -15,10 +15,9 @@
     <header id="app-header">
         <!-- Steuerung zum Ein- und Ausblenden der Zeitstrahlen -->
         <div id="timeline-controls"></div>
-        <div id="header-actions">
-            <button id="add-event-btn" title="Neues Ereignis hinzufügen">+</button>
-            <button id="manage-btn" title="Kategorien verwalten">⚙️</button>
-        </div>
+        <button id="show-workflow-btn" class="header-action-btn">
+            Workflow anzeigen
+        </button>
     </header>
     <main id="main-content">
         <!-- Wrapper für die Zeitleiste und die Detailansicht -->
@@ -28,50 +27,33 @@
             <aside id="details-pane">
                 <h3 id="details-title"></h3>
                 <p id="details-date"></p>
-                <p id="details-text"></p>
+                <div id="details-text"></div>
             </aside>
         </div>
     </main>
 
-    <!-- Modal zum Hinzufügen neuer Ereignisse -->
-    <div id="add-event-modal" class="modal-overlay is-hidden">
-        <div class="modal-content">
-            <button class="modal-close-btn" title="Schließen">&times;</button>
-            <h2>Neues Ereignis</h2>
-            <form id="add-event-form">
-                <div class="form-group">
-                    <label for="event-content">Titel</label>
-                    <input type="text" id="event-content" name="content" required>
+    <!-- Modal für den KI-Workflow -->
+    <div id="workflow-modal" class="modal-overlay">
+        <div id="workflow-container">
+            <button id="close-workflow-btn" class="modal-close-btn">&times;</button>
+            
+            <!-- NEU: Ansicht für die Workflow-Auswahl -->
+            <div id="workflow-selection">
+                <h2>Workflow auswählen</h2>
+                <p>Wähle einen Workflow aus, um die Anleitung und den Prompt anzuzeigen.</p>
+                <div id="workflow-list">
+                    <!-- Wird per JS gefüllt -->
                 </div>
-                <div class="form-group">
-                    <label for="event-date">Datum</label>
-                    <input type="date" id="event-date" name="date" required>
-                </div>
-                <div class="form-group">
-                    <label for="event-group">Kategorie</label>
-                    <input type="text" id="event-group" name="group" list="category-list" placeholder="Bestehende wählen oder neue erstellen" required>
-                    <datalist id="category-list"></datalist>
-                </div>
-                <button type="submit" class="form-submit-btn">Ereignis erstellen</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal zum Verwalten der Kategorien -->
-    <div id="manage-categories-modal" class="modal-overlay is-hidden">
-        <div class="modal-content">
-            <button class="modal-close-btn" title="Schließen">&times;</button>
-            <h2>Kategorien verwalten</h2>
-            <div id="category-list-container">
-                <!-- Kategorien werden hier dynamisch per JS eingefügt -->
             </div>
-            <form id="add-category-form" class="add-category-form">
-                <div class="form-group">
-                    <label for="new-category-name">Neue Kategorie hinzufügen</label>
-                    <input type="text" id="new-category-name" name="newCategoryName" placeholder="Name der Kategorie" required>
-                    <button type="submit" class="form-submit-btn">Hinzufügen</button>
-                </div>
-            </form>
+    
+            <!-- NEU: Ansicht für die Prompt-Anzeige (initial versteckt) -->
+            <div id="workflow-display" style="display: none;">
+                <button class="workflow-back-btn">‹ Zurück zur Auswahl</button>
+                <h2 id="workflow-title"></h2>
+                <p>Kopiere den folgenden Text und füge ihn in eine KI deiner Wahl ein.</p>
+                <pre id="workflow-content"><code>Wird geladen...</code></pre>
+                <button id="copy-workflow-btn" class="action-button">Prompt kopieren</button>
+            </div>
         </div>
     </div>
 
