@@ -1,0 +1,7 @@
+{
+    "group": "AI",
+    "content": "OpenAI optimiert ChatGPT mit GPT-3.5 Turbo",
+    "short_title": "GPT-3.5 Turbo",
+    "start": "2023-03-01",
+    "details": "### GPT-3.5 Turbo: Der Motor, der die KI-Revolution antrieb\n\nNach dem viralen Erfolg von ChatGPT veröffentlichte OpenAI im März 2023 das Modell `gpt-3.5-turbo` über seine API. Dieses Modell war das erste der GPT-3.5-Familie, das speziell für das Chat-Format optimiert wurde und bot eine mit den besten GPT-3-Modellen (wie `text-davinci-003`) vergleichbare Leistung. Der entscheidende Durchbruch war jedoch der Preis: Es war zehnmal günstiger im Betrieb.\n\n#### Die Rolle der KI im Durchbruch\n\nDie KI hinter GPT-3.5 Turbo war das Ergebnis massiver Optimierungen. OpenAI gelang es, die Leistung und die Fähigkeiten der InstructGPT-Serie in einem wesentlich kleineren und effizienteren Modell zu bündeln. Dies wurde durch eine Kombination aus verfeinerten Trainingsmethoden und architektonischen Verbesserungen erreicht, die es ermöglichten, die Rechenkosten drastisch zu senken, ohne die Qualität der Antworten signifikant zu beeinträchtigen.\n\n#### Bedeutung und potenzieller Einfluss\n\nGPT-3.5 Turbo war der Katalysator, der die breite Adaption von KI in der Wirtschaft erst ermöglichte. Der drastische Preissturz machte es für Tausende von Entwicklern und Unternehmen wirtschaftlich tragbar, intelligente Chat-Funktionen und andere KI-Anwendungen zu entwickeln. Dieses Modell wurde zum Arbeitspferd für unzählige Produkte und Dienste und legte das kommerzielle Fundament für das generative KI-Ökosystem."
+}

@@ -53,13 +53,12 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		originalDomain = [d3.timeYear.offset(now, -10), now];
 	}
 
-	// Die Skala wird nur einmal initialisiert und nicht mehr verändert (kein Zoom/Pan).
-	const timeScale = d3.scaleTime()
+	// Die globale Skala, die den gesamten Zeitraum aller Daten abdeckt.
+	const globalTimeScale = d3.scaleTime()
 		.domain(originalDomain)
 		.range([margin.left, width - margin.right]);
 
-	let linearBaseScale = timeScale; // Hält die aktuelle lineare Skala (ohne Fisheye)
-	let currentScale = timeScale; // Die aktuell verwendete Skala (kann linear oder fisheye sein)
+	let currentScale = globalTimeScale; // Die aktuell verwendete Skala
 	let focusedItemId = null;
     
 	const keyFunc = d => d.date.toISOString() + d.content; // Eindeutiger Schlüssel ohne ID
@@ -87,6 +86,31 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		// aktualisiere den internen Zustand. Ansonsten (z.B. bei Zoom), verwende den letzten Zustand.
 		if (newActiveLanes !== undefined) {
 			currentActiveLanes = newActiveLanes;
+		}
+
+		const isZoomed = typeof currentScale.focus === 'function';
+
+		// --- NEU: Domain dynamisch anpassen ---
+		// Passe die Skala nur an, wenn nicht gezoomt ist.
+		if (!isZoomed) {
+			const visibleData = data.filter(d => currentActiveLanes.includes(d.group));
+			const [minDate, maxDate] = d3.extent(visibleData, d => d.date);
+	
+			let newDomain;
+			if (minDate && maxDate) {
+				const timeSpan = maxDate.getTime() - minDate.getTime();
+				// 5% Padding, aber mindestens 1 Jahr, falls die Spanne 0 ist (bei nur einem Event)
+				const padding = timeSpan > 0 ? timeSpan * 0.05 : 1000 * 60 * 60 * 24 * 365;
+		
+				newDomain = [
+					new Date(minDate.getTime() - padding),
+					new Date(maxDate.getTime() + padding)
+				];
+			} else {
+				// Fallback, wenn keine Events sichtbar sind: Nutze die globale Domain.
+				newDomain = globalTimeScale.domain();
+			}
+			currentScale = globalTimeScale.copy().domain(newDomain);
 		}
 
 		// --- NEU: Dynamische Zuweisung basierend auf der Klick-Reihenfolge ---
@@ -153,8 +177,6 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		// --- ENDE HÖHENBERECHNUNG ---
 
 
-		const isZoomed = typeof currentScale.focus === 'function';
-
 		// --- 1. TICKS VORBEREITEN (NEUE, KLARE LOGIK) ---
 		let majorTicks, minorTicks;
 
@@ -175,16 +197,12 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		const xAxis = d3.axisBottom(currentScale)
 			.tickValues(allTicks) // Verwende die komplette, kombinierte Tick-Liste
 			.tickFormat(d => {
-				// Für Haupt-Ticks immer das Jahr anzeigen
-				if (majorTickSet.has(d.getTime())) {
-					return d3.timeFormat("%Y")(d);
-				}
-				// Im Zoom-Modus für Neben-Ticks den Monat anzeigen
-				if (isZoomed) {
+				// Im Zoom-Modus für Neben-Ticks den Monat anzeigen, ansonsten immer das Jahr
+				if (isZoomed && !majorTickSet.has(d.getTime())) {
 					return d3.timeFormat("%b")(d); // %b = Monatsabkürzung, z.B. "Jan"
 				}
-				// Ansonsten kein Label für Neben-Ticks
-				return "";
+				// In allen anderen Fällen das Jahr anzeigen
+				return d3.timeFormat("%Y")(d);
 			})
 			.tickSize(height - margin.top - margin.bottom);
 
@@ -219,18 +237,16 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 			.attr("stroke", "#555");
 
 		// --- 4. TICKS PERFORMAT AUSDÜNNEN (VISUELL) ---
-		if (isZoomed) {
-			let lastPixelPos = -Infinity;
-			axisGroup.selectAll(".tick").each(function(d) {
-				const tickElement = d3.select(this);
-				const pixelPos = currentScale(d);
-				const isMajor = majorTickSet.has(d.getTime());
-				const minSpacing = isMajor ? 60 : 35; // Etwas mehr Platz für Monats-Labels
-
-				tickElement.attr("opacity", (pixelPos - lastPixelPos >= minSpacing) ? 1 : 0);
-				if (pixelPos - lastPixelPos >= minSpacing) lastPixelPos = pixelPos;
-			});
-		}
+		let lastLabelPosition = -Infinity;
+		axisGroup.selectAll(".tick text").attr("opacity", function(d) {
+			const currentPosition = currentScale(d);
+			const minSpacing = isZoomed ? 40 : 50; // Mindestabstand zwischen Labels
+			if (currentPosition - lastLabelPosition < minSpacing) {
+				return 0; // Ausblenden, wenn zu nah am vorherigen Label
+			}
+			lastLabelPosition = currentPosition;
+			return 1; // Einblenden
+		});
 
 		// Layout-Berechnung von der Zeichen-Funktion getrennt
 		function calculateLayout(groupData, scale) {
@@ -388,11 +404,10 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		// 1. Erstelle die neue, gezoomte lineare Skala.
 		const zoomedScale = d3.scaleTime()
 			.domain([domainStart, domainEnd])
-			.range(timeScale.range());
+			.range(globalTimeScale.range());
 
 		// 2. Erstelle die Fisheye-Skala, basierend auf der gezoomten Skala.
-		linearBaseScale = zoomedScale; // Speichere die gezoomte lineare Skala für die Ticks
-		currentScale = createFisheyeScale(zoomedScale).focus((timeScale.range()[0] + timeScale.range()[1]) / 2);
+		currentScale = createFisheyeScale(zoomedScale).focus((globalTimeScale.range()[0] + globalTimeScale.range()[1]) / 2);
 
 		// 3. Zeichne die Timeline mit der neuen, verzerrten Skala neu.
 		drawTimeline();
@@ -410,10 +425,9 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 	}
 
 	function resetFocusAndDetails() {
-		if (focusedItemId !== null) {
-			// Setze die Skala auf den Ursprung zurück
-			currentScale = timeScale;
-			drawTimeline(); // Zeichne neu mit dem gespeicherten Zustand der Spuren
+		if (focusedItemId !== null) { // Setze den Zoom nur zurück, wenn auch gezoomt wurde
+			currentScale = globalTimeScale; // Setze die Skala auf die globale Übersicht zurück
+			drawTimeline(); // Zeichne neu mit dem gespeicherten Zustand der Spuren und der korrekten Skala
 
 			// Verstecke die Details und entferne den Fokus
 			detailsHandlers.hide();

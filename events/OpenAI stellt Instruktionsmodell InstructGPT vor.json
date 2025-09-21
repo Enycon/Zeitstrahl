@@ -1,0 +1,7 @@
+{
+    "group": "AI",
+    "content": "OpenAI stellt Instruktionsmodell InstructGPT vor",
+    "short_title": "InstructGPT",
+    "start": "2022-01-27",
+    "details": "### InstructGPT: Der entscheidende Schritt zu mehr Sicherheit und Nutzen\n\nIm Januar 2022 veröffentlichte OpenAI InstructGPT, ein Modell, das zwar auf GPT-3 basierte, aber eine entscheidende neue Trainingsmethode einführte: Reinforcement Learning from Human Feedback (RLHF). Anstatt nur Text vorherzusagen, wurde das Modell darauf trainiert, menschlichen Anweisungen zu folgen und Antworten zu geben, die von Menschen als hilfreich, ehrlich und harmlos bewertet wurden.\n\n#### Die Rolle der KI im Durchbruch\n\nDer KI-Durchbruch war die RLHF-Methode. Dabei bewerteten menschliche Tester verschiedene Antworten des Modells. Diese Bewertungen wurden dann genutzt, um ein Belohnungsmodell zu trainieren, das wiederum zur Feinabstimmung des Hauptmodells verwendet wurde. Das Ergebnis war ein Modell, das Anweisungen weitaus besser befolgte und weniger anfällig für die Generierung unerwünschter oder falscher Inhalte war als das viel größere, rohe GPT-3.\n\n#### Bedeutung und potenzieller Einfluss\n\nInstructGPT war der direkte technologische Vorläufer und das Fundament von ChatGPT. Es löste das Problem, dass große Sprachmodelle zwar mächtig sind, aber nicht zwangsläufig das tun, was der Nutzer wirklich will. Diese Ausrichtung auf menschliche Absichten (\"Alignment\") wurde zum neuen Paradigma für die Entwicklung nützlicher und sicherer KI-Systeme."
+}

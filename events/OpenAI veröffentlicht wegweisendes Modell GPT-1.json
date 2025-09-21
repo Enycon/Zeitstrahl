@@ -1,0 +1,7 @@
+{
+    "group": "AI",
+    "content": "OpenAI veröffentlicht wegweisendes Modell GPT-1",
+    "short_title": "GPT-1",
+    "start": "2018-06-11",
+    "details": "### GPT-1: Der Grundstein der generativen KI\n\nAm 11. Juni 2018 veröffentlichte OpenAI das Paper zu GPT-1 (\"Improving Language Understanding by Generative Pre-Training\") und legte damit das Fundament für die moderne generative KI. Es war das erste Modell, das erfolgreich das Konzept des unüberwachten Vortrainings auf einer Transformer-Architektur anwandte, um ein allgemeines Sprachverständnis zu erlangen.\n\n#### Die Rolle der KI im Durchbruch\n\nDer Durchbruch von GPT-1 war methodischer Natur. Anstatt ein KI-Modell für jede spezifische Sprachaufgabe (wie Übersetzung oder Zusammenfassung) einzeln zu trainieren, wurde GPT-1 auf einer riesigen Menge an Textdaten vortrainiert, um die Muster und Strukturen von Sprache zu lernen. Anschließend konnte dieses \"vor-wissende\" Modell mit sehr wenigen Beispielen auf spezifische Aufgaben feinabgestimmt werden. Diese zweiteilige Methode (Pre-training und Fine-tuning) wurde zum Standard für nachfolgende große Sprachmodelle.\n\n#### Bedeutung und potenzieller Einfluss\n\nObwohl seine Fähigkeiten im Vergleich zu heutigen Modellen begrenzt waren, war GPT-1 der entscheidende Proof-of-Concept. Es bewies, dass die Transformer-Architektur und unüberwachtes Lernen der Schlüssel zur Schaffung vielseitiger KI-Sprachmodelle sind. GPT-1 startete eine neue Forschungsrichtung und ebnete den Weg für die exponentielle Skalierung und die Fähigkeiten seiner Nachfolger."
+}

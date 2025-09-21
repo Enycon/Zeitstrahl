@@ -1,0 +1,7 @@
+{
+    "group": "AI",
+    "content": "OpenAI kündigt schnelleres GPT-4 Turbo an",
+    "short_title": "GPT-4 Turbo",
+    "start": "2023-11-06",
+    "details": "### GPT-4 Turbo: Mehr Leistung, weniger Kosten\n\nAuf seiner ersten Entwicklerkonferenz kündigte OpenAI GPT-4 Turbo an, eine verbesserte und effizientere Version seines Flaggschiff-Modells. Die Ankündigung war eine direkte Antwort auf das Feedback der Entwickler-Community, die nach geringeren Kosten und erweiterten Fähigkeiten verlangt hatte.\n\n#### Die Rolle der KI im Durchbruch\n\nDie KI von GPT-4 Turbo bot eine mit dem ursprünglichen GPT-4 vergleichbare Leistung, war aber durch Optimierungen in der Architektur und im Training wesentlich günstiger im Betrieb. Der entscheidende technologische Fortschritt war jedoch die Erweiterung des Kontextfensters auf 128.000 Token. Dies ermöglichte es der KI, den Inhalt eines über 300 Seiten langen Buches in einer einzigen Anfrage zu verarbeiten, was völlig neue Anwendungsfälle für die Analyse großer Dokumente und Codebasen eröffnete.\n\n#### Bedeutung und potenzieller Einfluss\n\nGPT-4 Turbo machte den Einsatz von Spitzen-KI für viele Unternehmen und Entwickler wirtschaftlich tragfähiger. Die drastische Reduzierung der API-Kosten beschleunigte die Adaption von KI in der Industrie. Das riesige Kontextfenster etablierte einen neuen Standard und trieb den Wettbewerb an, Modelle zu entwickeln, die immer größere Mengen an Informationen auf einmal verarbeiten können."
+}

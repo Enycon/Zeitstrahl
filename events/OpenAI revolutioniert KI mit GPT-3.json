@@ -1,0 +1,7 @@
+{
+    "group": "AI",
+    "content": "OpenAI revolutioniert KI mit GPT-3",
+    "short_title": "GPT-3",
+    "start": "2020-06-11",
+    "details": "### GPT-3: Die KI, die eine neue Industrie erschuf\n\nMit der Veröffentlichung von GPT-3 im Juni 2020 zementierte OpenAI seine Führungsposition in der KI-Forschung. Mit 175 Milliarden Parametern war das Modell über 100-mal größer als GPT-2 und zeigte erstaunliche \"emergente Fähigkeiten\". Es konnte komplexe Aufgaben wie das Schreiben von Gedichten, das Erstellen von funktionierendem Programmcode oder das Verfassen von Geschäfts-E-Mails oft nur durch wenige Beispiele im Prompt erledigen (\"Few-Shot Learning\").\n\n#### Die Rolle der KI im Durchbruch\n\nDer Durchbruch von GPT-3 war ein Triumph der Skalierung. Die schiere Größe des Modells ermöglichte ein so tiefes Verständnis von Sprachmustern, dass es Aufgaben lösen konnte, für die es nie explizit trainiert wurde. Anstatt Modelle für spezifische Aufgaben zu trainieren, konnten Entwickler nun dem Modell einfach in natürlicher Sprache sagen, was es tun sollte. Dies war der Beginn des \"Prompt Engineering\".\n\n#### Bedeutung und potenzieller Einfluss\n\nGPT-3 war das erste große Sprachmodell, das über eine kommerzielle API breit verfügbar gemacht wurde. Dies löste eine Gründungswelle von KI-Startups aus, die unzählige Anwendungen auf Basis von GPT-3 entwickelten, von Schreibassistenten bis hin zu Code-Generatoren. GPT-3 hat die KI von einem reinen Forschungsthema zu einem zugänglichen Werkzeug für die Industrie gemacht."
+}
