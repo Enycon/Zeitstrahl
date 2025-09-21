@@ -1,0 +1,202 @@
+/* Globale Variablen für Farben und Schriftarten für einfache Anpassung */
+:root {
+    /* Dunkles Farbschema */
+    --background-color: #121212; /* Reineres Schwarz für besseren Kontrast */
+    --text-color: #e0e0e0; /* Helles Grau für Text */
+    --primary-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --border-color: #333; /* Dunklerer Rand */
+    --card-background: #1e1e1e; /* Etwas helleres Dunkel für Karten/Paneele */
+    --shadow: 0 8px 25px rgba(0, 0, 0, 0.5); /* Stärkerer Schatten für dunklen Hintergrund */
+
+    /* Kontrastreiche Farben für die Zeitstrahl-Elemente */
+    --ai-color: #84a9ff; /* Leuchtendes Blau */
+    --science-color: #aaff84; /* Leuchtendes Grün */
+    --ai-border-color: #5c7cfa;
+    --science-border-color: #72e054;
+    --hover-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+}
+
+/* Grundlegende Stile für die Seite */
+body {
+    font-family: var(--primary-font);
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0; /* Kein äußerer Rand */
+    padding: 0; /* Kein innerer Rand am Body */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Mindesthöhe des Viewports */
+    justify-content: center; /* Zentriert den Hauptinhalt vertikal */
+}
+
+/* Keyframe-Animation für das Hereingleiten beim Laden */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stile für die Timeline-Steuerung (Checkboxes) */
+#timeline-controls {
+    display: flex;
+    justify-content: center;
+    gap: 2em;
+    padding: 0 0 2em 0;
+    animation: fadeInUp 0.5s 0.1s ease-out backwards; /* Lade-Animation anwenden */
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.control-group label {
+    font-size: 0.9em;
+    color: var(--text-color);
+    cursor: pointer;
+    user-select: none; /* Verhindert Textauswahl beim Klicken */
+}
+
+/* Custom Checkbox Style */
+.control-group input[type="checkbox"] {
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--card-background);
+    border: 2px solid var(--border-color);
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.2s ease;
+}
+
+.control-group input#toggle-science:checked {
+    border-color: var(--science-border-color);
+    background-color: var(--science-color);
+}
+
+.control-group input#toggle-ai:checked {
+    border-color: var(--ai-border-color);
+    background-color: var(--ai-color);
+}
+
+/* Wrapper für die beiden Zeitstrahlen */
+#timelines-wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Zentriert die Timeline und die Detail-Box */
+    animation: fadeInUp 0.5s 0.3s ease-out backwards; /* Lade-Animation anwenden */
+    transition: transform 0.5s ease-out; /* Animation für das Hochrücken */
+}
+
+/* Wenn die Details sichtbar sind, rückt der gesamte Wrapper nach oben */
+#timelines-wrapper.details-visible {
+    transform: translateY(-80px);
+}
+
+/* Visueller Effekt für das fokussierte Item (D3-Version) */
+.science-items .item-group.is-focused rect {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 6px var(--science-color));
+}
+
+.ai-items .item-group.is-focused rect {
+    transform: scale(1.05);
+    filter: drop-shadow(0 0 6px var(--ai-color));
+}
+
+/* D3 Timeline Stile */
+#d3-timeline-container {
+    width: 100%;
+    cursor: pointer;
+}
+
+.timeline-axis path,
+.timeline-axis line {
+    stroke: #555;
+}
+
+.timeline-axis text {
+    fill: #999;
+    font-size: 0.85em;
+}
+
+.item-link {
+    stroke: #555;
+    stroke-width: 1px;
+}
+
+.item-group rect {
+    stroke-width: 2px;
+    border-radius: 6px;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.item-group:hover rect {
+    transform: translateY(-3px);
+    filter: brightness(1.2);
+}
+
+.item-group text {
+    fill: #121212;
+    font-size: 0.9em;
+    font-weight: 500;
+    text-anchor: middle;
+    pointer-events: none;
+}
+
+/* Stile für das Detail-Fenster */
+#details-pane {
+    /* Entfernt: position: fixed; bottom, left, transform */
+    width: 90%;
+    max-width: 800px; /* Breiter für mehr Inhalt */
+    background-color: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    margin-top: 50px; /* Abstand zur Timeline, wenn sichtbar */
+
+    /* Standardmäßig versteckt und ohne Höhe */
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    padding: 0 1.5em; /* Padding nur links/rechts, Höhe wird durch Inhalt bestimmt */
+    transition: max-height 0.5s ease, opacity 0.5s ease, padding 0.5s ease, margin-top 0.5s ease;
+    pointer-events: none; /* Verhindert Interaktion, wenn unsichtbar */
+}
+
+#details-pane.visible {
+    /* Macht das Panel sichtbar und gibt ihm Höhe */
+    max-height: 500px; /* Genug Platz für den Inhalt */
+    opacity: 1;
+    padding: 1.5em;
+    pointer-events: auto;
+}
+
+#details-pane h3 {
+    margin-top: 0;
+    color: #ffffff;
+}
+
+#details-pane p {
+    text-align: left;
+    line-height: 1.6;
+    color: var(--text-color);
+}
+
+/* Transitionsfreundliche Klasse zum Ausblenden */
+.is-hidden {
+    height: 0;
+    opacity: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    pointer-events: none; /* Verhindert Interaktion im versteckten Zustand */
+}

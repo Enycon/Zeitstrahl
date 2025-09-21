@@ -1,0 +1,10 @@
+# Systemdateien ignorieren
+.DS_Store
+Thumbs.db
+
+# Editor-spezifische Konfigurationsordner
+.vscode/
+.idea/
+
+# Log-Dateien
+*.log

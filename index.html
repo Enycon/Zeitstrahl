@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zeitstrahl: Wissenschaft & KI</title>
+
+    <!-- Lade die D3.js Bibliothek von einem CDN -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <!-- Lade unsere eigenen Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Steuerung zum Ein- und Ausblenden der Zeitstrahlen -->
+    <div id="timeline-controls">
+        <div class="control-group">
+            <input type="checkbox" id="toggle-science" name="science" checked>
+            <label for="toggle-science">Wissenschaft</label>
+        </div>
+        <div class="control-group">
+            <input type="checkbox" id="toggle-ai" name="ai" checked>
+            <label for="toggle-ai">Künstliche Intelligenz</label>
+        </div>
+    </div>
+    <!-- Wrapper für die beiden entkoppelten Zeitstrahlen -->
+    <div id="timelines-wrapper">
+        <div id="d3-timeline-container"></div>
+
+        <!-- Dieses Fenster zeigt die Details beim Klicken an -->
+        <aside id="details-pane">
+            <h3 id="details-title"></h3>
+            <p id="details-date"></p>
+            <p id="details-text"></p>
+        </aside>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
