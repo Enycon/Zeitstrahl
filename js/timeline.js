@@ -88,6 +88,12 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 			currentActiveLanes = newActiveLanes;
 		}
 
+		// --- NEU: Layout für ALLE Gruppen VORAB berechnen ---
+		// Dies stellt sicher, dass die Stapelhöhen (d.level) für die aktuelle Skala
+		// korrekt sind, bevor die SVG-Höhe berechnet wird.
+		groupInfo.forEach((info, name) => {
+			calculateLayout(data.filter(d => d.group === name), currentScale);
+		});
 		const isZoomed = typeof currentScale.focus === 'function';
 
 		// --- NEU: Domain dynamisch anpassen ---
@@ -142,8 +148,21 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		groupInfo.forEach((info, name) => {
 			// Berücksichtige nur die Spuren, die jetzt aktiv sind
 			if (info.isCurrentlyUp || info.isCurrentlyDown) {
-				const groupData = data.filter(d => d.group === name);
-				const { maxLevel } = calculateLayout(groupData, currentScale);
+				// NEU: Filtere die Daten, um nur die im aktuellen Zeitbereich sichtbaren Events zu berücksichtigen.
+				// Dies stellt sicher, dass die Höhe der Ticks sich an den tatsächlich angezeigten Events orientiert.
+				const [minVisibleDate, maxVisibleDate] = currentScale.domain();
+				const visibleGroupData = data.filter(d => 
+					d.group === name && 
+					d.date >= minVisibleDate && 
+					d.date <= maxVisibleDate
+				);
+				// FINALER FIX V2: Berechne das Layout HIER neu, nur für die sichtbaren Daten,
+				// um die korrekte Stapelhöhe für den aktuellen Zoom zu erhalten.
+				let { maxLevel } = calculateLayout(visibleGroupData, currentScale);
+
+				// NEU: Begrenze die Stapelhöhe im Zoom-Modus, um ein Explodieren der Höhe zu verhindern.
+				if (isZoomed) maxLevel = Math.min(maxLevel, 2); // Erlaube maximal 3 Ebenen (0, 1, 2)
+
 				if (info.isCurrentlyUp) {
 					maxLevelUp = Math.max(maxLevelUp, maxLevel);
 				} else {
@@ -228,11 +247,14 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 			.select("line")
 			.transition().duration(animationDuration)
 			.attr("y1", d => {
-				// Lange Linie für Haupt-Ticks, kurze für Neben-Ticks
-				return majorTickSet.has(d.getTime()) ? 0 : heightUp - 40;
+				// Für Haupt-Ticks: Starte am obersten Rand der tatsächlichen Inhalte.
+				// Für Neben-Ticks: Starte kurz vor der Mittellinie.
+				return majorTickSet.has(d.getTime()) ? heightUp - (laneOffset + maxLevelUp * levelHeight) : heightUp - 40;
 			})
 			.attr("y2", d => {
-				return majorTickSet.has(d.getTime()) ? height - margin.top - margin.bottom : heightUp + 20;
+				// Für Haupt-Ticks: Ende am untersten Rand der tatsächlichen Inhalte.
+				// Für Neben-Ticks: Ende kurz nach der Mittellinie.
+				return majorTickSet.has(d.getTime()) ? heightUp + (laneOffset + maxLevelDown * levelHeight) : heightUp + 20;
 			})
 			.attr("stroke", "#555");
 
@@ -273,6 +295,13 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 				levelEndPositions[level] = x + d.width / 2;
 				maxLevel = Math.max(maxLevel, level);
 			});
+			return { maxLevel };
+		}
+
+		// NEU: Hilfsfunktion, um das vorab berechnete Layout abzurufen
+		function getPrecalculatedLayout(groupData) {
+			if (groupData.length === 0) return { maxLevel: 0 };
+			const maxLevel = d3.max(groupData, d => d.level || 0);
 			return { maxLevel };
 		}
 
@@ -351,17 +380,15 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		groupInfo.forEach((info, name) => {
 			// WICHTIG: Rufe die Zeichenfunktion nur für die Spuren auf, die jetzt aktiv sind.
 			// Die Exit-Animation wird innerhalb von drawItems für die nicht mehr aktiven Spuren gehandhabt.
-			calculateLayout(data.filter(d => d.group === name), currentScale); // Layout für alle berechnen
-			drawItems(info, name, info.y, info.color); // Zeichnen mit der berechneten Y-Position
+			drawItems(info, name, info.y, info.color);
 		});
 	}
 
 	function handleItemClick(event, d, element) {
 		event.stopPropagation();
 
-		// Wenn auf das bereits fokussierte Element geklickt wird, schließe die Details.
-		if (focusedItemId === keyFunc(d)) { // Und setze den Zoom zurück
-			resetFocusAndDetails();
+		// NEU: Wenn auf das bereits fokussierte Element geklickt wird, tue nichts.
+		if (focusedItemId === keyFunc(d)) {
 			return;
 		}
 
@@ -371,15 +398,15 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		const categorySortedData = sortedData.filter(item => item.group === category);
 		const currentIndexInCategory = categorySortedData.findIndex(item => keyFunc(item) === keyFunc(d));
 
-		// --- NEUE ZOOM-LOGIK: Zeige immer ca. 5 Events an ---
-		const itemsToShow = 5;
+		// --- NEUE ZOOM-LOGIK: Zeige immer ca. 7 Events an und setze eine Mindest-Zoomstufe ---
+		const itemsToShow = 7; // Erhöht von 5 auf 7 für einen breiteren Kontext
 		const half = Math.floor(itemsToShow / 2);
 
 		let startIndex = Math.max(0, currentIndexInCategory - half);
 		let endIndex = Math.min(categorySortedData.length - 1, currentIndexInCategory + half);
 
 		// Wenn wir am Anfang oder Ende sind, erweitere den Bereich auf der anderen Seite,
-		// um möglichst auf 5 Events zu kommen.
+		// um möglichst auf 7 Events zu kommen.
 		if (endIndex - startIndex + 1 < itemsToShow) {
 			if (startIndex === 0) {
 				endIndex = Math.min(categorySortedData.length - 1, itemsToShow - 1);
@@ -391,7 +418,12 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		const firstEventDate = categorySortedData[startIndex].date;
 		const lastEventDate = categorySortedData[endIndex].date;
 
-		const timeSpan = lastEventDate.getTime() - firstEventDate.getTime();
+		let timeSpan = lastEventDate.getTime() - firstEventDate.getTime();
+		
+		// NEU: Setze eine Mindest-Zeitspanne für den Zoom, um zu starkes Zoomen zu verhindern.
+		const minTimeSpan = 1000 * 60 * 60 * 24 * 365 * 3; // Mindestens 3 Jahre
+		if (timeSpan < minTimeSpan) timeSpan = minTimeSpan;
+
 		const padding = timeSpan > 0 ? timeSpan * 0.15 : 1000 * 60 * 60 * 24 * 365 * 5; // 5 Jahre Puffer als Fallback
 		const totalSpanWithPadding = timeSpan + padding * 2;
 
