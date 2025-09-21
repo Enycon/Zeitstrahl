@@ -125,7 +125,7 @@ body {
 
 /* Wenn die Details sichtbar sind, rückt der gesamte Wrapper nach oben */
 #timelines-wrapper.details-visible {
-    transform: translateY(-80px);
+    transform: translateY(-20px); /* Weiter reduzierter Wert für eine noch sanftere Bewegung */
 }
 
 /* Visueller Effekt für das fokussierte Item (D3-Version) */

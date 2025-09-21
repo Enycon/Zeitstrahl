@@ -77,7 +77,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     function setupControls(groupInfo, redraw) {
         const activeLanes = [];
         const allCheckboxes = new Map();
-        const groupsToRender = [...new Set(groupInfo.keys())];
+        
+        // Sortiere die Gruppen, sodass die bevorzugten am Anfang stehen
+        const allGroups = [...new Set(groupInfo.keys())];
+        const preferredOrder = ['AI', 'Kreativ-KI'];
+
+        const orderedGroups = preferredOrder.filter(p => allGroups.includes(p));
+        const remainingGroups = allGroups.filter(g => !preferredOrder.includes(g));
+        // Die finale Reihenfolge für die Anzeige der Steuerelemente
+        const groupsToRender = [...orderedGroups, ...remainingGroups];
 
         groupsToRender.forEach(name => {
             const info = groupInfo.get(name);
@@ -102,12 +110,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
             allCheckboxes.set(name, checkbox);
 
-            if (activeLanes.length < 2) {
-                activeLanes.push(name);
-            } else {
-                checkbox.checked = false;
-            }
-
             checkbox.addEventListener('change', () => {
                 if (checkbox.checked) {
                     activeLanes.push(name);
@@ -125,6 +127,25 @@ document.addEventListener('DOMContentLoaded', async function() {
                 redraw(activeLanes);
             });
         });
+
+        // --- NEU: Setze die Standard-Kategorien ---
+        const preferredDefaults = ['AI', 'Kreativ-KI'];
+        const availablePreferred = preferredDefaults.filter(p => allCheckboxes.has(p));
+
+        // Fülle die aktiven Spuren zuerst mit den bevorzugten Kategorien
+        availablePreferred.forEach(name => {
+            if (activeLanes.length < 2) activeLanes.push(name);
+        });
+
+        // Fülle den Rest mit anderen verfügbaren Kategorien auf, falls die bevorzugten nicht ausreichen
+        groupsToRender.forEach(name => {
+            if (activeLanes.length < 2 && !activeLanes.includes(name)) {
+                activeLanes.push(name);
+            }
+        });
+
+        // Setze den 'checked'-Status für alle Checkboxen basierend auf der finalen Auswahl
+        allCheckboxes.forEach((checkbox, name) => checkbox.checked = activeLanes.includes(name));
 
         return activeLanes;
     }

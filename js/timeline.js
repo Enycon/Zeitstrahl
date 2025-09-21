@@ -80,7 +80,15 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 		});
 	});
 
-	function drawTimeline(activeLaneNames = []) {
+	let currentActiveLanes = []; // NEU: Interner Zustand für die aktiven Spuren
+
+	function drawTimeline(newActiveLanes) {
+		// Wenn neue Spuren übergeben werden (z.B. durch Klick auf eine Checkbox),
+		// aktualisiere den internen Zustand. Ansonsten (z.B. bei Zoom), verwende den letzten Zustand.
+		if (newActiveLanes !== undefined) {
+			currentActiveLanes = newActiveLanes;
+		}
+
 		// --- NEU: Dynamische Zuweisung basierend auf der Klick-Reihenfolge ---
 		// Setze für alle Gruppen die Positionen zurück
 		groupInfo.forEach(info => {
@@ -88,21 +96,21 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 			info.isCurrentlyDown = false;
 		});
 
-		// Weise die Positionen basierend auf der Reihenfolge im `activeLaneNames` Array zu.
-		if (activeLaneNames.length > 0) {
-			const topLaneInfo = groupInfo.get(activeLaneNames[0]);
+		// Weise die Positionen basierend auf der Reihenfolge im `currentActiveLanes` Array zu.
+		if (currentActiveLanes.length > 0) {
+			const topLaneInfo = groupInfo.get(currentActiveLanes[0]);
 			if (topLaneInfo) topLaneInfo.isCurrentlyUp = true;
 		}
-		if (activeLaneNames.length > 1) {
-			const bottomLaneInfo = groupInfo.get(activeLaneNames[1]);
+		if (currentActiveLanes.length > 1) {
+			const bottomLaneInfo = groupInfo.get(currentActiveLanes[1]);
 			if (bottomLaneInfo) bottomLaneInfo.isCurrentlyDown = true;
-		};
+		}
 		// --- NEUE, ROBUSTE HÖHENBERECHNUNG ---
 		const laneOffset = 50; // Grundabstand von der Mittellinie
-		const laneHeight = 80; // Abstand zwischen den Zeitstrahl-Spuren
-		const levelHeight = 40; // Vertikaler Abstand für jede Ausweich-Ebene
 		const verticalPadding = 30; // Etwas mehr Platz, um Clipping der Boxen zu verhindern
 
+		const laneHeight = 80; // Abstand zwischen den Zeitstrahl-Spuren
+		const levelHeight = 40; // Vertikaler Abstand für jede Ausweich-Ebene
 		let maxLevelUp = 0;
 		let maxLevelDown = 0;
 
@@ -191,9 +199,12 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 			.transition().duration(animationDuration)
 			.attr("y", heightUp - margin.top - 10);
 
-		axisGroup.select(".domain").remove();
-
 		// --- 3. ACHSE NACHBEARBEITEN ---
+		// Positioniere die horizontale Achsenlinie (domain) in der Mitte
+		axisGroup.select(".domain")
+			.transition().duration(animationDuration)
+			.attr("transform", `translate(0, ${heightUp - margin.top})`);
+
 		// Passe die Länge der Tick-Linien an, um eine visuelle Hierarchie zu schaffen.
 		axisGroup.selectAll(".tick")
 			.select("line")
@@ -229,7 +240,7 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 
 			groupData.forEach(d => {
 				if (!d.width) {
-					const text = svg.append("text").attr("class", "item-group-text-hidden").text(d.content);
+					const text = svg.append("text").attr("class", "item-group-text-hidden").text(d.short_title || d.content);
 					d.width = text.node().getBBox().width + textPadding;
 					text.remove();
 				}
@@ -304,7 +315,7 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 			
 			boxesEnter.append("text")
 				.attr("y", info.isUp ? -2.5 : 17.5) // Benutze die originale isUp für die Text-Position
-				.text(d => d.content);
+				.text(d => d.short_title || d.content);
 
 			// MERGE
 			boxes.merge(boxesEnter).transition().duration(animationDuration)
@@ -401,9 +412,8 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 	function resetFocusAndDetails() {
 		if (focusedItemId !== null) {
 			// Setze die Skala auf den Ursprung zurück
-			linearBaseScale = timeScale;
 			currentScale = timeScale;
-			drawTimeline();
+			drawTimeline(); // Zeichne neu mit dem gespeicherten Zustand der Spuren
 
 			// Verstecke die Details und entferne den Fokus
 			detailsHandlers.hide();
@@ -416,11 +426,5 @@ export function initTimeline(containerSelector, data, allGroupNames, detailsHand
 	svg.on('click', resetFocusAndDetails);
 
 	// Exponiere die Gruppen-Informationen und die redraw-Funktion
-	return { 
-		groupInfo, 
-		redraw: (activeLanes) => {
-			// Stelle sicher, dass die Timeline mit den korrekten aktiven Spuren gezeichnet wird.
-			drawTimeline(activeLanes);
-		}
-	};
+	return { groupInfo, redraw: drawTimeline };
 }
