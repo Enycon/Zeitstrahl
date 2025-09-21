@@ -55,8 +55,16 @@ export function initTimeline(containerSelector, detailsHandlers) {
 		const xAxis = d3.axisBottom(currentScale)
 			.tickValues(allTicks) // Verwende die komplette, kombinierte Tick-Liste
 			.tickFormat(d => {
-				// Zeige nur Labels für Haupt-Ticks an
-				return majorTickSet.has(d.getTime()) ? d3.timeFormat("%Y")(d) : "";
+				// Für Haupt-Ticks immer das Jahr anzeigen
+				if (majorTickSet.has(d.getTime())) {
+					return d3.timeFormat("%Y")(d);
+				}
+				// Im Zoom-Modus für Neben-Ticks den Monat anzeigen
+				if (isZoomed) {
+					return d3.timeFormat("%b")(d); // %b = Monatsabkürzung, z.B. "Jan"
+				}
+				// Ansonsten kein Label für Neben-Ticks
+				return "";
 			})
 			.tickSize(height - margin.top - margin.bottom);
 
@@ -94,7 +102,7 @@ export function initTimeline(containerSelector, detailsHandlers) {
 				const tickElement = d3.select(this);
 				const pixelPos = currentScale(d);
 				const isMajor = majorTickSet.has(d.getTime());
-				const minSpacing = isMajor ? 60 : 25;
+				const minSpacing = isMajor ? 60 : 35; // Etwas mehr Platz für Monats-Labels
 
 				tickElement.attr("opacity", (pixelPos - lastPixelPos >= minSpacing) ? 1 : 0);
 				if (pixelPos - lastPixelPos >= minSpacing) lastPixelPos = pixelPos;
