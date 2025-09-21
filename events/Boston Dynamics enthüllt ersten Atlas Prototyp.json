@@ -1,0 +1,7 @@
+{
+    "group": "Robotics",
+    "content": "Boston Dynamics enthüllt ersten Atlas Prototyp",
+    "short_title": "DARPA Atlas",
+    "start": "2013-07-11",
+    "details": "### DARPA Atlas: Gebaut für den Katastropheneinsatz\n\nIm Juli 2013 wurde der erste Atlas-Roboter von Boston Dynamics als Teil der DARPA Robotics Challenge (DRC) der Öffentlichkeit vorgestellt. Diese erste Version war ein 150 kg schweres, hydraulisches Kraftpaket, das über ein externes Kabel mit Strom und Kühlung versorgt wurde. Sein Zweck war es, in für Menschen zu gefährlichen Katastrophengebieten zu operieren, Werkzeuge zu benutzen und Fahrzeuge zu fahren.\n\n#### Die Rolle der KI im Durchbruch\n\nDie KI von Atlas war darauf ausgelegt, teilautonom zu arbeiten. Menschliche Operatoren gaben dem Roboter übergeordnete Befehle, während die Onboard-KI die komplexen Details der Balance und der Gliedmaßenkoordination in Echtzeit berechnete. Diese Kombination aus menschlicher Aufsicht und KI-gesteuerter Motorik war entscheidend, um die anspruchsvollen Aufgaben der DRC zu bewältigen.\n\n#### Bedeutung und potenzieller Einfluss\n\nDer DARPA Atlas war der Beginn der Ära der hochleistungsfähigen, dynamischen humanoiden Roboter. Er bewies, dass es möglich war, eine Maschine zu bauen, die sich in einer unstrukturierten, für Menschen geschaffenen Umgebung bewegen und nützliche Arbeit verrichten kann. Er legte das Hardware- und Software-Fundament für alle nachfolgenden, immer agileren Atlas-Generationen."
+}

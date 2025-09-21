@@ -1,0 +1,7 @@
+{
+    "group": "Robotics",
+    "content": "Atlas Roboter macht einen Salto rückwärts",
+    "short_title": "Atlas Backflip",
+    "start": "2017-11-16",
+    "details": "### Der Salto, der die Welt schockierte\n\nAm 16. November 2017 veröffentlichte Boston Dynamics ein Video, das sofort viral ging: Der humanoide Roboter Atlas absolvierte eine Gymnastikübung, die mit einem perfekten Salto rückwärts endete. Es war das erste Mal, dass ein Roboter eine derart komplexe, dynamische und menschenähnliche Bewegung zeigte, die selbst für die meisten Menschen unerreichbar ist.\n\n#### Die Rolle der KI im Durchbruch\n\nDieser Stunt war ein Triumph der KI-gesteuerten Steuerungssysteme. Die KI des Roboters nutzte Daten aus seinen Sensoren (IMUs, Gelenkwinkel), um ein perfektes internes Modell seines Körpers und seiner Umgebung zu erstellen. Algorithmen für die Ganzkörper-Steuerung berechneten die exakten Kräfte und Drehmomente, die in jedem Gelenk in Millisekunden benötigt wurden, um die Bewegung auszuführen und die Balance während des gesamten Manövers zu halten.\n\n#### Bedeutung und potenzieller Einfluss\n\nDer Salto war mehr als nur ein Trick. Er war eine Demonstration einer beispiellosen Agilität und Koordination, die die öffentliche Wahrnehmung von Robotern nachhaltig veränderte. Er zeigte, dass die Grenzen der Robotermobilität weit über einfaches Gehen hinausgingen, und wurde zum Symbol für die rasanten Fortschritte in der dynamischen Robotik."
+}

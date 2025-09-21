@@ -1,0 +1,7 @@
+{
+    "group": "Robotics",
+    "content": "Figure AI zeigt autonome Lagerarbeit",
+    "short_title": "Figure Warehouse",
+    "start": "2024-01-07",
+    "details": "### Ein Roboter erledigt eine komplette Aufgabe – autonom\n\nAnfang Januar 2024 veröffentlichte Figure AI ein Video, das einen wichtigen Meilenstein zeigte: Der Roboter Figure 01 identifizierte eine Kiste in seiner Umgebung, hob sie auf, ging mehrere Schritte zu einem Förderband und legte die Kiste präzise darauf ab. Das Besondere daran: Der gesamte Vorgang wurde autonom von der KI des Roboters gesteuert, ohne menschliches Eingreifen oder Fernsteuerung.\n\n#### Die Rolle der KI im Durchbruch\n\nDieses Video war eine Demonstration der End-to-End-KI von Figure. Das neuronale Netzwerk des Roboters verarbeitete die visuellen Daten seiner Kameras, um die Kiste und das Förderband zu lokalisieren. Es plante dann die gesamte Abfolge von Bewegungen – Greifen, Gehen, Platzieren – und führte sie aus. Dies zeigte, dass die KI in der Lage war, eine nützliche, mehrstufige Aufgabe selbstständig zu verstehen und auszuführen.\n\n#### Bedeutung und potenzieller Einfluss\n\nWährend frühere Videos oft nur einzelne Fähigkeiten wie Gehen oder Greifen zeigten, war dies einer der ersten Beweise für einen humanoiden Roboter, der einen kompletten, praktischen Arbeitszyklus autonom bewältigt. Es war ein entscheidender Schritt auf dem Weg von der Demonstration zur realen Anwendung und ein wichtiger Meilenstein für die kommerzielle Reife der Technologie."
+}

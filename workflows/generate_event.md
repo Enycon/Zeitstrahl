@@ -7,7 +7,8 @@ Recherchiere über die unten angegebene Nachricht. Ordne sie einer der unten ste
 *   `Robotics` (Robotik)
 *   `Quantencomputing` (Quantencomputer und -algorithmen)
 *   `Science` (Wissenschaft)
-*   `Anti-Aging` (Wissenschaft)  
+*   `Anti-Aging` (Wissenschaft)
+*   `Medizin` (Medizinische Durchbrüche)
 
 **Anforderungen an die Ausgabe:**
 
