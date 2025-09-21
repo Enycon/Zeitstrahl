@@ -1,22 +1,57 @@
 // js/timeline.js
-import { breakthroughData } from './data.js';
 import { createFisheyeScale } from './fisheye.js';
 
-export function initTimeline(containerSelector, detailsHandlers) {
+export function initTimeline(containerSelector, data, allGroupNames, detailsHandlers) {
+	// --- DYNAMISCHE KONFIGURATION basierend auf Daten ---
+	// 1. Alle einzigartigen Gruppen aus den Daten extrahieren
+	const groupNames = allGroupNames;
+	
+	// 2. Berechne die benötigte Höhe dynamisch
+	const laneOffset = 50; // Grundabstand von der Mittellinie
+	const laneHeight = 80; // Abstand zwischen den Zeitstrahl-Spuren
+	const verticalPadding = 60; // Zusätzlicher Platz oben und unten
+	const maxOffsetFromCenter = laneOffset + Math.floor((groupNames.length - 1) / 2) * laneHeight;
+	const height = (maxOffsetFromCenter + verticalPadding) * 2;
+
 	// --- KONFIGURATION ---
 	const container = d3.select(containerSelector);
 	const width = container.node().getBoundingClientRect().width;
-	const height = 350;
 	const margin = { top: 20, right: 40, bottom: 20, left: 40 };
+	const animationDuration = 1200; // Zentrale Animationsdauer in ms
 
 	const svg = container.append("svg")
 		.attr("width", width)
 		.attr("height", height);
 
-	// Sortiere die Daten einmalig nach Datum für die Nachbarsuche beim Zoomen
-	const sortedData = [...breakthroughData].sort((a, b) => a.date - b.date);
+	// Feste Gruppe für die Achse - wird zuerst gezeichnet (im Hintergrund)
+	const axisGroup = svg.append("g").attr("class", "timeline-axis");
 
-	const originalDomain = d3.extent(sortedData, d => d.date);
+	// Erstelle globale Ebenen, um die Render-Reihenfolge zu steuern
+	// (Linien unten, Boxen oben)
+	const lineLayer = svg.append("g").attr("class", "layer-lines");
+	const boxLayer = svg.append("g").attr("class", "layer-boxes");
+
+	// Sortiere die Daten einmalig nach Datum für die Nachbarsuche beim Zoomen
+	const sortedData = [...data].sort((a, b) => a.date - b.date);
+
+	// --- NEU: Domain mit dynamischem Padding ---
+	let originalDomain;
+	const [minDate, maxDate] = d3.extent(sortedData, d => d.date);
+
+	if (minDate && maxDate) {
+		const timeSpan = maxDate.getTime() - minDate.getTime();
+		// 5% Padding, aber mindestens 1 Jahr, falls die Spanne 0 ist (bei nur einem Event)
+		const padding = timeSpan > 0 ? timeSpan * 0.05 : 1000 * 60 * 60 * 24 * 365;
+
+		originalDomain = [
+			new Date(minDate.getTime() - padding),
+			new Date(maxDate.getTime() + padding)
+		];
+	} else {
+		// Fallback, falls keine Daten vorhanden sind: Zeige die letzten 10 Jahre an.
+		const now = new Date();
+		originalDomain = [d3.timeYear.offset(now, -10), now];
+	}
 
 	// Die Skala wird nur einmal initialisiert und nicht mehr verändert (kein Zoom/Pan).
 	const timeScale = d3.scaleTime()
@@ -27,12 +62,68 @@ export function initTimeline(containerSelector, detailsHandlers) {
 	let currentScale = timeScale; // Die aktuell verwendete Skala (kann linear oder fisheye sein)
 	let focusedItemId = null;
 
-	// Gruppen für die verschiedenen Elemente
-	const axisGroup = svg.append("g").attr("class", "timeline-axis");
-	const scienceGroup = svg.append("g").attr("class", "science-items");
-	const aiGroup = svg.append("g").attr("class", "ai-items");
+	// --- DYNAMISCHE GRUPPEN-VERWALTUNG ---
+	// Eine Farbskala erstellen, die jeder Gruppe automatisch eine Farbe zuweist
+	const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+
+	// Informationen und SVG-Elemente für jede Gruppe speichern
+	const groupInfo = new Map();
+	groupNames.forEach((name, i) => {
+		groupInfo.set(name, {
+			name: name,
+			isUp: i % 2 === 0, // Speichern, ob die Lane oben oder unten ist
+			color: colorScale(name),
+			lineGroup: lineLayer.append("g").attr("class", `timeline-group-lines timeline-group-${name}`),
+			boxGroup: boxLayer.append("g").attr("class", `timeline-group-boxes timeline-group-${name}`)
+		});
+	});
 
 	function drawTimeline() {
+		// --- NEUE, ROBUSTE HÖHENBERECHNUNG ---
+		const laneOffset = 50; // Grundabstand von der Mittellinie
+		const laneHeight = 80; // Abstand zwischen den Zeitstrahl-Spuren
+		const levelHeight = 40; // Vertikaler Abstand für jede Ausweich-Ebene
+		const verticalPadding = 30; // Etwas mehr Platz, um Clipping der Boxen zu verhindern
+
+		let maxLevelUp = 0;
+		let maxLevelDown = 0;
+
+		// 1. Berechne für alle sichtbaren Gruppen die maximale Stapelhöhe
+		groupInfo.forEach((info, name) => {
+			if (info.boxGroup.style("display") !== "none") {
+				const groupData = data.filter(d => d.group === name);
+				const { maxLevel } = calculateLayout(groupData, currentScale);
+				if (info.isUp) {
+					maxLevelUp = Math.max(maxLevelUp, maxLevel);
+				} else {
+					maxLevelDown = Math.max(maxLevelDown, maxLevel);
+				}
+			}
+		});
+
+		// 2. Berechne die finale Höhe der SVG basierend auf der Stapelung
+		const heightUp = laneOffset + maxLevelUp * levelHeight + verticalPadding;
+		const heightDown = laneOffset + maxLevelDown * levelHeight + verticalPadding;
+		const height = heightUp + heightDown;
+		svg.transition().duration(animationDuration).attr("height", height);
+
+		// 3. Berechne die Y-Positionen der Lanes neu, basierend auf der finalen Höhe
+		let upIndex = 0;
+		let downIndex = 0;
+		groupInfo.forEach(info => {
+			if (info.isUp) {
+				// Setze die Y-Position der Lane sofort, ohne Transition.
+				// Die Animation wird von den Items selbst übernommen.
+				info.y = heightUp - (laneOffset + upIndex * laneHeight);
+				upIndex++;
+			} else {
+				info.y = heightUp + (laneOffset + downIndex * laneHeight); // Sofort setzen
+				downIndex++;
+			}
+		});
+		// --- ENDE HÖHENBERECHNUNG ---
+
+
 		const isZoomed = typeof currentScale.focus === 'function';
 
 		// --- 1. TICKS VORBEREITEN (NEUE, KLARE LOGIK) ---
@@ -70,14 +161,14 @@ export function initTimeline(containerSelector, detailsHandlers) {
 
 		axisGroup
 			.attr("transform", `translate(0, ${margin.top})`)
-			.transition().duration(750)
+			.transition().duration(animationDuration)
 			.call(xAxis); // Lässt D3 die Achse inkl. aller Attribute animieren
 		
 		// Überschreibe die "y"-Animation der Labels mit einer sofortigen Transition.
 		// Das stoppt den "Einflug"-Effekt, ohne die horizontale Bewegung zu stören.
 		axisGroup.selectAll(".tick text")
-			.transition().duration(0)
-			.attr("y", height / 2 - margin.top - 10);
+			.transition().duration(animationDuration)
+			.attr("y", heightUp - margin.top - 10);
 
 		axisGroup.select(".domain").remove();
 
@@ -85,13 +176,13 @@ export function initTimeline(containerSelector, detailsHandlers) {
 		// Passe die Länge der Tick-Linien an, um eine visuelle Hierarchie zu schaffen.
 		axisGroup.selectAll(".tick")
 			.select("line")
-			.transition().duration(750)
+			.transition().duration(animationDuration)
 			.attr("y1", d => {
 				// Lange Linie für Haupt-Ticks, kurze für Neben-Ticks
-				return majorTickSet.has(d.getTime()) ? 0 : height / 2 - 40;
+				return majorTickSet.has(d.getTime()) ? 0 : heightUp - 40;
 			})
 			.attr("y2", d => {
-				return majorTickSet.has(d.getTime()) ? height - margin.top - margin.bottom : height / 2 + 20;
+				return majorTickSet.has(d.getTime()) ? height - margin.top - margin.bottom : heightUp + 20;
 			})
 			.attr("stroke", "#555");
 
@@ -109,70 +200,93 @@ export function initTimeline(containerSelector, detailsHandlers) {
 			});
 		}
 
-		function drawItems(selection, groupName, base_y, color) {
-			const itemPadding = 5; // Horizontaler Abstand zwischen Elementen
-			const levelHeight = 40; // Vertikaler Abstand für jede Ausweich-Ebene
-			const textPadding = 20; // Horizontaler Innenabstand (links + rechts) für den Text im Rechteck
+		// Layout-Berechnung von der Zeichen-Funktion getrennt
+		function calculateLayout(groupData, scale) {
+			const itemPadding = 5;
+			const textPadding = 20;
+			let maxLevel = 0;
 
-			// Filtere und sortiere die Daten für die Layout-Berechnung
-			const groupData = breakthroughData
-				.filter(d => d.group === groupName)
-				.sort((a, b) => a.date - b.date);
-			
-			// Berechne für jedes Element eine "Ebene", um Überlappungen zu vermeiden
-			const levelEndPositions = []; // Speichert die End-Position (x + width) für jede Ebene
 			groupData.forEach(d => {
-				// Berechne die Breite, falls sie noch nicht existiert (wichtig für den ersten Durchlauf)
 				if (!d.width) {
-					// Temporäres Text-Element zum Messen erstellen (wird nicht gerendert)
 					const text = svg.append("text").attr("class", "item-group-text-hidden").text(d.content);
 					d.width = text.node().getBBox().width + textPadding;
 					text.remove();
 				}
-				const x = currentScale(d.date);
+			});
+
+			const levelEndPositions = [];
+			groupData.sort((a, b) => a.date - b.date).forEach(d => {
+				const x = scale(d.date);
 				let level = 0;
 				while (levelEndPositions[level] && x - d.width / 2 < levelEndPositions[level] + itemPadding) {
 					level++;
 				}
-				d.level = level; // Speichere die Ebene im Datenobjekt
+				d.level = level;
 				levelEndPositions[level] = x + d.width / 2;
+				maxLevel = Math.max(maxLevel, level);
 			});
+			return { maxLevel };
+		}
 
-			const items = selection.selectAll("g.item-group")
+		function drawItems(info, groupName, base_y, color) {
+			const levelHeight = 40; // Vertikaler Abstand für jede Ausweich-Ebene
+
+			const groupData = data
+				.filter(d => d.group === groupName)
+				.sort((a, b) => a.date - b.date);
+
+			// --- 1. Linien zeichnen (in der unteren Ebene) ---
+			const lines = info.lineGroup.selectAll("line.item-link")
 				.data(groupData, d => d.id);
 
-			const itemEnter = items.enter().append("g")
-				.attr("class", "item-group")
-				.attr("transform", d => `translate(${currentScale(d.date)}, ${base_y + (base_y < height / 2 ? -d.level * levelHeight : d.level * levelHeight)})`)
+			const linesEnter = lines.enter().append("line")
+				.attr("class", "item-link")
+				.attr("x1", d => currentScale(d.date))
+				.attr("x2", d => currentScale(d.date))
+				.attr("y1", heightUp) // Start an der Mittelachse
+				.attr("y2", d => base_y + (info.isUp ? -d.level * levelHeight + 5 : d.level * levelHeight)); // Ende am Rand der Box
+
+			lines.merge(linesEnter).transition().duration(animationDuration)
+				.attr("x1", d => currentScale(d.date))
+				.attr("x2", d => currentScale(d.date))
+				.attr("y1", heightUp)
+				.attr("y2", d => base_y + (info.isUp ? -d.level * levelHeight + 5 : d.level * levelHeight));
+
+			lines.exit().remove();
+
+			// --- 2. Boxen zeichnen (in der oberen Ebene) ---
+			const boxes = info.boxGroup.selectAll("g.item-box-group")
+				.data(groupData, d => d.id);
+
+			const boxesEnter = boxes.enter().append("g")
+				.attr("class", "item-box-group")
+				.attr("transform", d => `translate(${currentScale(d.date)}, ${base_y + (info.isUp ? -d.level * levelHeight : d.level * levelHeight)})`)
 				.on("click", handleItemClick);
 
-			itemEnter.append("text")
-				.attr("y", base_y < height / 2 ? -2.5 : 17.5)
-				.text(d => d.content);
-			
-			itemEnter.append("line")
-				.attr("class", "item-link")
-				.attr("y1", base_y < height / 2 ? 25 : -25)
-				.attr("y2", 0);
-
-			// Füge das Rechteck HINTER dem Text ein (DOM-Reihenfolge) und nutze die berechnete Breite
-			itemEnter.insert("rect", "text")
+			boxesEnter.insert("rect", "text")
 				.attr("x", d => -d.width / 2)
-				.attr("y", base_y < height / 2 ? -20 : 0)
+				.attr("y", info.isUp ? -20 : 0)
 				.attr("width", d => d.width)
 				.attr("height", 25)
 				.attr("rx", 5)
 				.style("fill", color);
+			
+			boxesEnter.append("text")
+				.attr("y", info.isUp ? -2.5 : 17.5)
+				.text(d => d.content);
 
-			items.merge(itemEnter)
-				.transition().duration(750)
-				.attr("transform", d => `translate(${currentScale(d.date)}, ${base_y + (base_y < height / 2 ? -d.level * levelHeight : d.level * levelHeight)})`);
+			boxes.merge(boxesEnter).transition().duration(animationDuration)
+				.attr("transform", d => `translate(${currentScale(d.date)}, ${base_y + (info.isUp ? -d.level * levelHeight : d.level * levelHeight)})`);
 
-			items.exit().remove();
+			boxes.exit().remove();
 		}
 
-		drawItems(scienceGroup, 'science', height / 2 - 50, "var(--science-color)");
-		drawItems(aiGroup, 'ai', height / 2 + 50, "var(--ai-color)");
+		// Rufe drawItems für jede dynamisch gefundene Gruppe auf
+		groupInfo.forEach((info, name) => {
+			if (info.boxGroup.style("display") !== "none") {
+				drawItems(info, name, info.y, info.color);
+			}
+		});
 	}
 
 	function handleItemClick(event, d, element) {
@@ -241,8 +355,11 @@ export function initTimeline(containerSelector, detailsHandlers) {
 		detailsHandlers.show(d);
 
 		// 5. Setze den visuellen Fokus
-		d3.selectAll(".item-group").classed("is-focused", false);
+		const info = groupInfo.get(d.group);
+		d3.selectAll(".item-box-group").classed("is-focused", false);
+		d3.selectAll(".item-box-group rect").style("filter", null); // Reset aller Filter
 		d3.select(event.currentTarget).classed("is-focused", true);
+		d3.select(event.currentTarget).select("rect").style("filter", `drop-shadow(0 0 6px ${info.color})`);
 		focusedItemId = d.id;
 	}
 
@@ -255,7 +372,8 @@ export function initTimeline(containerSelector, detailsHandlers) {
 
 			// Verstecke die Details und entferne den Fokus
 			detailsHandlers.hide();
-			d3.selectAll(".item-group").classed("is-focused", false);
+			d3.selectAll(".item-box-group").classed("is-focused", false);
+			d3.selectAll(".item-box-group rect").style("filter", null);
 			focusedItemId = null;
 		}
 	}
@@ -265,6 +383,6 @@ export function initTimeline(containerSelector, detailsHandlers) {
 	// Initialisierung
 	drawTimeline();
 
-	// Exponiere die Gruppen, damit sie von außen gesteuert werden können (z.B. für Toggles)
-	return { scienceGroup, aiGroup };
+	// Exponiere die Gruppen-Informationen, damit sie von außen gesteuert werden können
+	return { groupInfo, redraw: drawTimeline };
 }

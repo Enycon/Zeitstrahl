@@ -7,13 +7,6 @@
     --border-color: #333; /* Dunklerer Rand */
     --card-background: #1e1e1e; /* Etwas helleres Dunkel für Karten/Paneele */
     --shadow: 0 8px 25px rgba(0, 0, 0, 0.5); /* Stärkerer Schatten für dunklen Hintergrund */
-
-    /* Kontrastreiche Farben für die Zeitstrahl-Elemente */
-    --ai-color: #84a9ff; /* Leuchtendes Blau */
-    --science-color: #aaff84; /* Leuchtendes Grün */
-    --ai-border-color: #5c7cfa;
-    --science-border-color: #72e054;
-    --hover-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
 }
 
 /* Grundlegende Stile für die Seite */
@@ -26,7 +19,6 @@ body {
     display: flex;
     flex-direction: column;
     min-height: 100vh; /* Mindesthöhe des Viewports */
-    justify-content: center; /* Zentriert den Hauptinhalt vertikal */
 }
 
 /* Keyframe-Animation für das Hereingleiten beim Laden */
@@ -41,13 +33,57 @@ body {
     }
 }
 
+/* Stile für den neuen App-Header */
+#app-header {
+    position: relative; /* Wichtig für die Positionierung des Buttons */
+    display: flex;
+    align-items: center;
+    padding: 0.8em 2em;
+    width: 100%;
+    background-color: var(--background-color);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    z-index: 100;
+    animation: fadeInUp 0.5s 0.1s ease-out backwards;
+    box-sizing: border-box; /* Verhindert, dass Padding die Gesamtbreite erhöht */
+}
+
+/* Stile für die Timeline-Steuerung (Checkboxes) */
+#timeline-controls {
+    margin: 0 auto; /* Zentriert die Kontrollen perfekt in der Mitte */
+    display: flex;
+    justify-content: center;
+    gap: 2em;
+}
+
 /* Stile für die Timeline-Steuerung (Checkboxes) */
 #timeline-controls {
     display: flex;
     justify-content: center;
     gap: 2em;
-    padding: 0 0 2em 0;
-    animation: fadeInUp 0.5s 0.1s ease-out backwards; /* Lade-Animation anwenden */
+}
+
+#manage-btn {
+    position: absolute; /* Löst den Button aus dem Flex-Fluss */
+    right: 2em;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: 2px solid var(--border-color);
+    color: var(--text-color);
+    font-size: 1.2em;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#manage-btn:hover {
+    border-color: #fff;
+    color: #fff;
 }
 
 .control-group {
@@ -77,16 +113,18 @@ body {
     transition: background-color 0.2s ease;
 }
 
-.control-group input#toggle-science:checked {
-    border-color: var(--science-border-color);
-    background-color: var(--science-color);
+/* Die Rahmenfarbe wird per JS gesetzt, die Hintergrundfarbe beim Checken */
+.control-group input[type="checkbox"]:checked {
+    background-color: currentColor; /* Nimmt die Farbe vom Border-Color an */
 }
 
-.control-group input#toggle-ai:checked {
-    border-color: var(--ai-border-color);
-    background-color: var(--ai-color);
+/* Hauptinhaltsbereich, der den restlichen Platz einnimmt */
+#main-content {
+    flex-grow: 1; /* Wächst, um den verfügbaren Platz auszufüllen */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Zentriert den Timeline-Wrapper vertikal */
 }
-
 /* Wrapper für die beiden Zeitstrahlen */
 #timelines-wrapper {
     width: 100%;
@@ -94,7 +132,7 @@ body {
     flex-direction: column;
     align-items: center; /* Zentriert die Timeline und die Detail-Box */
     animation: fadeInUp 0.5s 0.3s ease-out backwards; /* Lade-Animation anwenden */
-    transition: transform 0.5s ease-out; /* Animation für das Hochrücken */
+    transition: transform 1s ease-out; /* Animation für das Hochrücken (verlangsamt) */
 }
 
 /* Wenn die Details sichtbar sind, rückt der gesamte Wrapper nach oben */
@@ -103,14 +141,9 @@ body {
 }
 
 /* Visueller Effekt für das fokussierte Item (D3-Version) */
-.science-items .item-group.is-focused rect {
+.item-box-group.is-focused rect {
     transform: scale(1.05);
-    filter: drop-shadow(0 0 6px var(--science-color));
-}
-
-.ai-items .item-group.is-focused rect {
-    transform: scale(1.05);
-    filter: drop-shadow(0 0 6px var(--ai-color));
+    /* Der Filter wird jetzt direkt per JS gesetzt */
 }
 
 /* D3 Timeline Stile */
@@ -134,18 +167,18 @@ body {
     stroke-width: 1px;
 }
 
-.item-group rect {
+.item-box-group rect {
     stroke-width: 2px;
     border-radius: 6px;
     transition: transform 0.2s ease, filter 0.2s ease;
 }
 
-.item-group:hover rect {
+.item-box-group:hover rect {
     transform: translateY(-3px);
     filter: brightness(1.2);
 }
 
-.item-group text {
+.item-box-group text {
     fill: #121212;
     font-size: 0.9em;
     font-weight: 500;
@@ -199,4 +232,146 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     pointer-events: none; /* Verhindert Interaktion im versteckten Zustand */
+}
+
+/* --- Stile für das Modal --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.modal-overlay.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-content {
+    background-color: var(--card-background);
+    padding: 2em;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    transform: translateY(0);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay.is-hidden .modal-content {
+    transform: translateY(-20px);
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 2em;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 1.5em;
+}
+
+.form-group {
+    margin-bottom: 1.5em;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5em;
+    font-size: 0.9em;
+    color: #aaa;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.8em;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-color);
+    font-size: 1em;
+}
+
+.form-submit-btn {
+    width: 100%;
+    padding: 1em;
+    background-color: #84a9ff; /* Gleiche Farbe wie AI-Timeline */
+    color: #121212;
+    border: none;
+    border-radius: 4px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.form-submit-btn:hover {
+    background-color: #a0c0ff;
+}
+
+/* --- Stile für das Kategorie-Management-Modal --- */
+#category-list-container {
+    margin-bottom: 2em;
+    max-height: 30vh;
+    overflow-y: auto;
+    padding-right: 10px; /* Platz für Scrollbar */
+}
+
+.category-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8em;
+    background-color: var(--background-color);
+    border-radius: 4px;
+    margin-bottom: 0.5em;
+}
+
+.category-list-item span {
+    font-weight: 500;
+}
+
+.category-delete-btn {
+    background: none;
+    border: 1px solid #c94a4a;
+    color: #c94a4a;
+    border-radius: 4px;
+    padding: 0.3em 0.6em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.category-delete-btn:hover {
+    background-color: #c94a4a;
+    color: #fff;
+}
+
+.add-category-form .form-group {
+    display: flex;
+    gap: 10px;
+}
+
+.add-category-form input {
+    flex-grow: 1;
+}
+
+.add-category-form button {
+    width: auto;
+    white-space: nowrap;
 }

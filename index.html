@@ -12,27 +12,40 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Steuerung zum Ein- und Ausblenden der Zeitstrahlen -->
-    <div id="timeline-controls">
-        <div class="control-group">
-            <input type="checkbox" id="toggle-science" name="science" checked>
-            <label for="toggle-science">Wissenschaft</label>
+    <header id="app-header">
+        <!-- Steuerung zum Ein- und Ausblenden der Zeitstrahlen -->
+        <div id="timeline-controls"></div>
+        <button id="manage-btn" title="Kategorien verwalten">⚙️</button>
+    </header>
+    <main id="main-content">
+        <!-- Wrapper für die Zeitleiste und die Detailansicht -->
+        <div id="timelines-wrapper">
+            <div id="d3-timeline-container"></div>
+            <!-- Dieses Fenster zeigt die Details beim Klicken an -->
+            <aside id="details-pane">
+                <h3 id="details-title"></h3>
+                <p id="details-date"></p>
+                <p id="details-text"></p>
+            </aside>
         </div>
-        <div class="control-group">
-            <input type="checkbox" id="toggle-ai" name="ai" checked>
-            <label for="toggle-ai">Künstliche Intelligenz</label>
-        </div>
-    </div>
-    <!-- Wrapper für die beiden entkoppelten Zeitstrahlen -->
-    <div id="timelines-wrapper">
-        <div id="d3-timeline-container"></div>
+    </main>
 
-        <!-- Dieses Fenster zeigt die Details beim Klicken an -->
-        <aside id="details-pane">
-            <h3 id="details-title"></h3>
-            <p id="details-date"></p>
-            <p id="details-text"></p>
-        </aside>
+    <!-- Modal zum Verwalten der Kategorien -->
+    <div id="manage-categories-modal" class="modal-overlay is-hidden">
+        <div class="modal-content">
+            <button class="modal-close-btn" title="Schließen">&times;</button>
+            <h2>Kategorien verwalten</h2>
+            <div id="category-list-container">
+                <!-- Kategorien werden hier dynamisch per JS eingefügt -->
+            </div>
+            <form id="add-category-form" class="add-category-form">
+                <div class="form-group">
+                    <label for="new-category-name">Neue Kategorie hinzufügen</label>
+                    <input type="text" id="new-category-name" name="newCategoryName" placeholder="Name der Kategorie" required>
+                    <button type="submit" class="form-submit-btn">Hinzufügen</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script type="module" src="js/main.js"></script>
